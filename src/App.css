@@ -51,6 +51,13 @@
   font-size: 0.75rem;
 }
 
+.thumbnail span {
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .add-images {
   margin-bottom: 16px;
 }

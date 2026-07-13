@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { createArtwork, uploadArtworkImages } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
@@ -13,8 +13,21 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
   const [editionNumber, setEditionNumber] = useState("");
   const [editionTotal, setEditionTotal] = useState("");
   const [images, setImages] = useState<File[]>([]);
+  const [primaryIndex, setPrimaryIndex] = useState(0);
+  const [previews, setPreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const urls = images.map((file) => URL.createObjectURL(file));
+    setPreviews(urls);
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
+  }, [images]);
+
+  function handleFilesSelected(files: File[]) {
+    setImages(files);
+    setPrimaryIndex(0);
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -34,7 +47,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
         // shouldn't lose the genesis record, so this is intentionally a
         // separate try/catch rather than part of the block above.
         try {
-          await uploadArtworkImages(artwork.id, images);
+          await uploadArtworkImages(artwork.id, images, primaryIndex);
         } catch (uploadErr) {
           setError(`Artwork created, but images failed to upload: ${getErrorMessage(uploadErr)}`);
           navigate(`/artworks/${artwork.id}`);
@@ -63,13 +76,28 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
           type="file"
           accept="image/*"
           multiple
-          onChange={(e) => setImages(Array.from(e.target.files ?? []))}
+          onChange={(e) => handleFilesSelected(Array.from(e.target.files ?? []))}
         />
-        {images.length > 0 && (
-          <p className="muted">
-            {images.length} image{images.length > 1 ? "s" : ""} selected — the first will be set
-            as primary.
-          </p>
+        {previews.length > 0 && (
+          <>
+            <p className="muted">Choose which one is the primary image:</p>
+            <div className="thumbnail-row">
+              {previews.map((src, i) => (
+                <label key={src} className="thumbnail">
+                  <img src={src} alt="" />
+                  <span>
+                    <input
+                      type="radio"
+                      name="primaryImage"
+                      checked={primaryIndex === i}
+                      onChange={() => setPrimaryIndex(i)}
+                    />{" "}
+                    Primary
+                  </span>
+                </label>
+              ))}
+            </div>
+          </>
         )}
 
         <label htmlFor="medium">Medium</label>
