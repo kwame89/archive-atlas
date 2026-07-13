@@ -6,8 +6,10 @@ import {
   getArtwork,
   getArtworkEvents,
   getArtworkImages,
+  getArtworkPrivateNotes,
   getProfileNames,
   isController,
+  saveArtworkPrivateNotes,
   setPrimaryImage,
   updateGenesisDate,
   uploadArtworkImages,
@@ -41,6 +43,11 @@ export function ArtworkPage() {
   const [editingGenesisDate, setEditingGenesisDate] = useState(false);
   const [genesisDateDraft, setGenesisDateDraft] = useState("");
   const [genesisDateError, setGenesisDateError] = useState("");
+  const [privateNotes, setPrivateNotes] = useState("");
+  const [editingPrivateNotes, setEditingPrivateNotes] = useState(false);
+  const [privateNotesDraft, setPrivateNotesDraft] = useState("");
+  const [privateNotesError, setPrivateNotesError] = useState("");
+  const [savingPrivateNotes, setSavingPrivateNotes] = useState(false);
 
   async function reloadImages() {
     if (!id) return;
@@ -74,7 +81,11 @@ export function ArtworkPage() {
         if (session && artworkResult) {
           const myProfile = await getMyProfile(session.user.id);
           if (myProfile) {
-            setCanManage(await isController(artworkResult.root_artist_id, myProfile.id));
+            const controls = await isController(artworkResult.root_artist_id, myProfile.id);
+            setCanManage(controls);
+            if (controls) {
+              setPrivateNotes(await getArtworkPrivateNotes(artworkResult.id));
+            }
           }
         }
       })
@@ -124,6 +135,27 @@ export function ArtworkPage() {
     }
   }
 
+  function startEditingPrivateNotes() {
+    setPrivateNotesDraft(privateNotes);
+    setPrivateNotesError("");
+    setEditingPrivateNotes(true);
+  }
+
+  async function handleSavePrivateNotes() {
+    if (!id) return;
+    setSavingPrivateNotes(true);
+    setPrivateNotesError("");
+    try {
+      await saveArtworkPrivateNotes(id, privateNotesDraft);
+      setPrivateNotes(privateNotesDraft);
+      setEditingPrivateNotes(false);
+    } catch (err) {
+      setPrivateNotesError(getErrorMessage(err));
+    } finally {
+      setSavingPrivateNotes(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="card">
@@ -151,6 +183,17 @@ export function ArtworkPage() {
   }
 
   const primaryImage = images.find((img) => img.is_primary) ?? images[0];
+
+  const dimensionsDisplay =
+    artwork.height && artwork.width
+      ? `${artwork.height} x ${artwork.width}${artwork.depth ? ` x ${artwork.depth}` : ""} in`
+      : artwork.dimensions;
+
+  const dateDisplay = artwork.date_display_override
+    ? artwork.date_display_override
+    : artwork.year
+      ? `${artwork.is_circa ? "circa " : ""}${artwork.year}`
+      : null;
 
   return (
     <div className="card">
@@ -191,13 +234,44 @@ export function ArtworkPage() {
 
       <h1>{artwork.title}</h1>
       <p className="muted">
-        {[artwork.medium, artwork.dimensions, artwork.year].filter(Boolean).join(" · ") ||
+        {[artwork.medium, dimensionsDisplay, dateDisplay].filter(Boolean).join(" · ") ||
           "No details recorded"}
         {artwork.edition_number && artwork.edition_total
           ? ` · Edition ${artwork.edition_number}/${artwork.edition_total}`
           : ""}
       </p>
       <p className="muted">By {names[artwork.root_artist_id] ?? "Unknown"}</p>
+
+      {(artwork.subject_matter || artwork.art_type) && (
+        <p className="muted">
+          {[artwork.art_type, artwork.subject_matter].filter(Boolean).join(" · ")}
+        </p>
+      )}
+
+      {artwork.tags && artwork.tags.length > 0 && (
+        <div className="tag-row">
+          {artwork.tags.map((tag) => (
+            <span key={tag} className="tag">
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {artwork.description && <p>{artwork.description}</p>}
+
+      {(artwork.is_signed || artwork.condition) && (
+        <p className="muted">
+          {[
+            artwork.is_signed
+              ? `Signed${artwork.signature_notes ? ` (${artwork.signature_notes})` : ""}`
+              : null,
+            artwork.condition ? `Condition: ${artwork.condition}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+      )}
 
       <h2 className="section-heading">Provenance</h2>
       <ul className="timeline">
@@ -252,6 +326,38 @@ export function ArtworkPage() {
           </li>
         ))}
       </ul>
+
+      {canManage && (
+        <>
+          <h2 className="section-heading">Private notes</h2>
+          {!editingPrivateNotes ? (
+            <>
+              <p className="muted">{privateNotes || "No private notes yet."}</p>
+              <button type="button" className="secondary" onClick={startEditingPrivateNotes}>
+                Edit notes
+              </button>
+            </>
+          ) : (
+            <>
+              <textarea
+                value={privateNotesDraft}
+                onChange={(e) => setPrivateNotesDraft(e.target.value)}
+              />
+              <button type="button" disabled={savingPrivateNotes} onClick={handleSavePrivateNotes}>
+                {savingPrivateNotes ? "Saving…" : "Save"}
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setEditingPrivateNotes(false)}
+              >
+                Cancel
+              </button>
+            </>
+          )}
+          {privateNotesError && <p className="error">{privateNotesError}</p>}
+        </>
+      )}
 
       <Link to="/">Back home</Link>
     </div>

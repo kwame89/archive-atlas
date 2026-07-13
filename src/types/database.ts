@@ -37,13 +37,31 @@ export interface Artwork {
   title: string;
   medium: string | null;
   dimensions: string | null;
+  height: number | null;
+  width: number | null;
+  depth: number | null;
   year: number | null;
+  is_circa: boolean;
+  date_display_override: string | null;
   edition_number: number | null;
   edition_total: number | null;
+  description: string | null;
+  tags: string[] | null;
+  subject_matter: string | null;
+  art_type: string | null;
+  is_signed: boolean;
+  signature_notes: string | null;
+  condition: string | null;
   root_artist_id: string;
   current_owner_id: string | null;
   current_custodian_id: string | null;
   created_at: string;
+}
+
+export interface ArtworkPrivateNotes {
+  artwork_id: string;
+  notes: string;
+  updated_at: string;
 }
 
 export interface ArtworkImage {

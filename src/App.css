@@ -86,6 +86,21 @@
   font-size: 0.8rem;
 }
 
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.tag {
+  font-size: 0.75rem;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  opacity: 0.85;
+}
+
 .section-heading {
   font-size: 1rem;
   margin: 24px 0 8px;
@@ -129,19 +144,41 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   padding: 9px 10px;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: transparent;
   color: inherit;
   font-size: 0.95rem;
+  font-family: inherit;
+}
+
+textarea {
+  min-height: 70px;
+  resize: vertical;
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+.dimension-row {
+  display: flex;
+  gap: 8px;
+}
+
+.dimension-row input {
+  width: 100%;
+}
+
+label input[type="checkbox"] {
+  width: auto;
+  margin-right: 4px;
 }
 
 button {

@@ -5,9 +5,21 @@ export interface CreateArtworkInput {
   title: string;
   medium?: string;
   dimensions?: string;
+  height?: number;
+  width?: number;
+  depth?: number;
   year?: number;
+  isCirca?: boolean;
+  dateDisplayOverride?: string;
   editionNumber?: number;
   editionTotal?: number;
+  description?: string;
+  tags?: string[];
+  subjectMatter?: string;
+  artType?: string;
+  isSigned?: boolean;
+  signatureNotes?: string;
+  condition?: string;
   /** When the work was actually created, if different from today (e.g.
    * archiving an older piece) — becomes the genesis event's occurred_at. */
   dateCreated?: string;
@@ -30,9 +42,21 @@ export async function createArtwork(
       title: input.title,
       medium: input.medium || null,
       dimensions: input.dimensions || null,
+      height: input.height ?? null,
+      width: input.width ?? null,
+      depth: input.depth ?? null,
       year: input.year ?? null,
+      is_circa: input.isCirca ?? false,
+      date_display_override: input.dateDisplayOverride || null,
       edition_number: input.editionNumber ?? null,
       edition_total: input.editionTotal ?? null,
+      description: input.description || null,
+      tags: input.tags && input.tags.length > 0 ? input.tags : null,
+      subject_matter: input.subjectMatter || null,
+      art_type: input.artType || null,
+      is_signed: input.isSigned ?? false,
+      signature_notes: input.signatureNotes || null,
+      condition: input.condition || null,
       root_artist_id: rootArtistId,
       current_owner_id: rootArtistId,
       current_custodian_id: rootArtistId,
@@ -136,6 +160,23 @@ export async function setPrimaryImage(artworkId: string, imageId: string): Promi
     .update({ is_primary: true })
     .eq("id", imageId);
   if (setError) throw setError;
+}
+
+export async function getArtworkPrivateNotes(artworkId: string): Promise<string> {
+  const { data, error } = await supabase
+    .from("artwork_private_notes")
+    .select("notes")
+    .eq("artwork_id", artworkId)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.notes ?? "";
+}
+
+export async function saveArtworkPrivateNotes(artworkId: string, notes: string): Promise<void> {
+  const { error } = await supabase
+    .from("artwork_private_notes")
+    .upsert({ artwork_id: artworkId, notes, updated_at: new Date().toISOString() });
+  if (error) throw error;
 }
 
 export async function isController(profileId: string, controllerProfileId: string): Promise<boolean> {
