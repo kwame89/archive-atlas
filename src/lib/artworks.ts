@@ -1,5 +1,5 @@
 import { supabase } from "./supabaseClient";
-import type { Artwork, ArtworkEvent, Profile } from "../types/database";
+import type { Artwork, ArtworkEvent, ArtworkImage, Profile } from "../types/database";
 
 export interface CreateArtworkInput {
   title: string;
@@ -51,25 +51,75 @@ export async function createArtwork(
   return artwork;
 }
 
-export async function uploadArtworkImage(artworkId: string, file: File): Promise<string> {
-  const path = `${artworkId}/${Date.now()}-${file.name}`;
+export async function getArtworkImages(artworkId: string): Promise<ArtworkImage[]> {
+  const { data, error } = await supabase
+    .from("artwork_images")
+    .select("*")
+    .eq("artwork_id", artworkId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
 
-  const { error: uploadError } = await supabase.storage
-    .from("artwork-images")
-    .upload(path, file);
-  if (uploadError) throw uploadError;
+/**
+ * Uploads one or more images for an artwork. If the artwork has no primary
+ * image yet, the first file uploaded here becomes primary. Uploads happen
+ * sequentially (not in parallel) specifically so that "is there already a
+ * primary" check stays correct across the batch.
+ */
+export async function uploadArtworkImages(artworkId: string, files: File[]): Promise<ArtworkImage[]> {
+  const existing = await getArtworkImages(artworkId);
+  let hasPrimary = existing.some((img) => img.is_primary);
 
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from("artwork-images").getPublicUrl(path);
+  const uploaded: ArtworkImage[] = [];
+  for (const file of files) {
+    const path = `${artworkId}/${Date.now()}-${file.name}`;
+    const { error: uploadError } = await supabase.storage.from("artwork-images").upload(path, file);
+    if (uploadError) throw uploadError;
 
-  const { error: updateError } = await supabase
-    .from("artworks")
-    .update({ image_url: publicUrl })
-    .eq("id", artworkId);
-  if (updateError) throw updateError;
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("artwork-images").getPublicUrl(path);
 
-  return publicUrl;
+    const makePrimary = !hasPrimary;
+    const { data: row, error: insertError } = await supabase
+      .from("artwork_images")
+      .insert({ artwork_id: artworkId, url: publicUrl, is_primary: makePrimary })
+      .select()
+      .single();
+    if (insertError) throw insertError;
+
+    if (makePrimary) hasPrimary = true;
+    uploaded.push(row);
+  }
+  return uploaded;
+}
+
+/** Unsets the current primary (if any) and sets the given image as primary. */
+export async function setPrimaryImage(artworkId: string, imageId: string): Promise<void> {
+  const { error: unsetError } = await supabase
+    .from("artwork_images")
+    .update({ is_primary: false })
+    .eq("artwork_id", artworkId)
+    .eq("is_primary", true);
+  if (unsetError) throw unsetError;
+
+  const { error: setError } = await supabase
+    .from("artwork_images")
+    .update({ is_primary: true })
+    .eq("id", imageId);
+  if (setError) throw setError;
+}
+
+export async function isController(profileId: string, controllerProfileId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("profile_controllers")
+    .select("profile_id")
+    .eq("profile_id", profileId)
+    .eq("controller_profile_id", controllerProfileId)
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
 }
 
 export async function getArtwork(id: string): Promise<Artwork | null> {

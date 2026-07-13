@@ -43,7 +43,14 @@ export interface Artwork {
   root_artist_id: string;
   current_owner_id: string | null;
   current_custodian_id: string | null;
-  image_url: string | null;
+  created_at: string;
+}
+
+export interface ArtworkImage {
+  id: string;
+  artwork_id: string;
+  url: string;
+  is_primary: boolean;
   created_at: string;
 }
 

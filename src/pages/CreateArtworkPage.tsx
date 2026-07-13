@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { createArtwork, uploadArtworkImage } from "../lib/artworks";
+import { createArtwork, uploadArtworkImages } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
 import type { Profile } from "../types/database";
 
@@ -12,7 +12,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
   const [year, setYear] = useState("");
   const [editionNumber, setEditionNumber] = useState("");
   const [editionTotal, setEditionTotal] = useState("");
-  const [image, setImage] = useState<File | null>(null);
+  const [images, setImages] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -29,14 +29,14 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
         editionNumber: editionNumber ? Number(editionNumber) : undefined,
         editionTotal: editionTotal ? Number(editionTotal) : undefined,
       });
-      if (image) {
+      if (images.length > 0) {
         // Artwork is already created at this point; an image upload failure
         // shouldn't lose the genesis record, so this is intentionally a
         // separate try/catch rather than part of the block above.
         try {
-          await uploadArtworkImage(artwork.id, image);
+          await uploadArtworkImages(artwork.id, images);
         } catch (uploadErr) {
-          setError(`Artwork created, but the image failed to upload: ${getErrorMessage(uploadErr)}`);
+          setError(`Artwork created, but images failed to upload: ${getErrorMessage(uploadErr)}`);
           navigate(`/artworks/${artwork.id}`);
           return;
         }
@@ -57,13 +57,20 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
         <label htmlFor="title">Title</label>
         <input id="title" required value={title} onChange={(e) => setTitle(e.target.value)} />
 
-        <label htmlFor="image">Image</label>
+        <label htmlFor="images">Images</label>
         <input
-          id="image"
+          id="images"
           type="file"
           accept="image/*"
-          onChange={(e) => setImage(e.target.files?.[0] ?? null)}
+          multiple
+          onChange={(e) => setImages(Array.from(e.target.files ?? []))}
         />
+        {images.length > 0 && (
+          <p className="muted">
+            {images.length} image{images.length > 1 ? "s" : ""} selected — the first will be set
+            as primary.
+          </p>
+        )}
 
         <label htmlFor="medium">Medium</label>
         <input

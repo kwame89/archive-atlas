@@ -1,8 +1,18 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getArtwork, getArtworkEvents, getProfileNames } from "../lib/artworks";
+import { useAuth } from "../lib/AuthProvider";
+import { getMyProfile } from "../lib/profiles";
+import {
+  getArtwork,
+  getArtworkEvents,
+  getArtworkImages,
+  getProfileNames,
+  isController,
+  setPrimaryImage,
+  uploadArtworkImages,
+} from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
-import type { Artwork, ArtworkEvent } from "../types/database";
+import type { Artwork, ArtworkEvent, ArtworkImage } from "../types/database";
 
 const EVENT_LABELS: Record<ArtworkEvent["type"], string> = {
   genesis: "Created",
@@ -17,20 +27,32 @@ const EVENT_LABELS: Record<ArtworkEvent["type"], string> = {
 
 export function ArtworkPage() {
   const { id } = useParams<{ id: string }>();
+  const { session } = useAuth();
   const [artwork, setArtwork] = useState<Artwork | null>(null);
+  const [images, setImages] = useState<ArtworkImage[]>([]);
   const [events, setEvents] = useState<ArtworkEvent[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
+  const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [imageActionError, setImageActionError] = useState("");
+  const [addingImages, setAddingImages] = useState(false);
+
+  async function reloadImages() {
+    if (!id) return;
+    setImages(await getArtworkImages(id));
+  }
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
     setError("");
-    Promise.all([getArtwork(id), getArtworkEvents(id)])
-      .then(async ([artworkResult, eventsResult]) => {
+    Promise.all([getArtwork(id), getArtworkEvents(id), getArtworkImages(id)])
+      .then(async ([artworkResult, eventsResult, imagesResult]) => {
         setArtwork(artworkResult);
         setEvents(eventsResult);
+        setImages(imagesResult);
+
         const profileIds = eventsResult.flatMap((e) => [
           e.actor_id,
           e.to_party_id,
@@ -39,10 +61,42 @@ export function ArtworkPage() {
         ]);
         if (artworkResult) profileIds.push(artworkResult.root_artist_id);
         setNames(await getProfileNames(profileIds.filter((x): x is string => !!x)));
+
+        if (session && artworkResult) {
+          const myProfile = await getMyProfile(session.user.id);
+          if (myProfile) {
+            setCanManage(await isController(artworkResult.root_artist_id, myProfile.id));
+          }
+        }
       })
       .catch((err) => setError(getErrorMessage(err)))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, session]);
+
+  async function handleSetPrimary(imageId: string) {
+    if (!id) return;
+    setImageActionError("");
+    try {
+      await setPrimaryImage(id, imageId);
+      await reloadImages();
+    } catch (err) {
+      setImageActionError(getErrorMessage(err));
+    }
+  }
+
+  async function handleAddImages(files: File[]) {
+    if (!id || files.length === 0) return;
+    setAddingImages(true);
+    setImageActionError("");
+    try {
+      await uploadArtworkImages(id, files);
+      await reloadImages();
+    } catch (err) {
+      setImageActionError(getErrorMessage(err));
+    } finally {
+      setAddingImages(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -70,11 +124,45 @@ export function ArtworkPage() {
     );
   }
 
+  const primaryImage = images.find((img) => img.is_primary) ?? images[0];
+
   return (
     <div className="card">
-      {artwork.image_url && (
-        <img src={artwork.image_url} alt={artwork.title} className="artwork-image" />
+      {primaryImage && (
+        <img src={primaryImage.url} alt={artwork.title} className="artwork-image" />
       )}
+
+      {images.length > 1 && (
+        <div className="thumbnail-row">
+          {images.map((img) => (
+            <div key={img.id} className="thumbnail">
+              <img src={img.url} alt="" />
+              {canManage && !img.is_primary && (
+                <button type="button" className="secondary" onClick={() => handleSetPrimary(img.id)}>
+                  Set as primary
+                </button>
+              )}
+              {img.is_primary && <span className="muted">Primary</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {canManage && (
+        <div className="add-images">
+          <label htmlFor="addImages">Add images</label>
+          <input
+            id="addImages"
+            type="file"
+            accept="image/*"
+            multiple
+            disabled={addingImages}
+            onChange={(e) => handleAddImages(Array.from(e.target.files ?? []))}
+          />
+        </div>
+      )}
+      {imageActionError && <p className="error">{imageActionError}</p>}
+
       <h1>{artwork.title}</h1>
       <p className="muted">
         {[artwork.medium, artwork.dimensions, artwork.year].filter(Boolean).join(" · ") ||
