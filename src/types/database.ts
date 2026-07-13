@@ -43,6 +43,7 @@ export interface Artwork {
   root_artist_id: string;
   current_owner_id: string | null;
   current_custodian_id: string | null;
+  image_url: string | null;
   created_at: string;
 }
 

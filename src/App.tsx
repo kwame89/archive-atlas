@@ -1,13 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/AuthProvider";
-import { supabase } from "./lib/supabaseClient";
 import { getMyProfile } from "./lib/profiles";
 import { SignInPage } from "./pages/SignInPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
+import { HomePage } from "./pages/HomePage";
+import { CreateArtworkPage } from "./pages/CreateArtworkPage";
+import { ArtworkPage } from "./pages/ArtworkPage";
 import type { Profile } from "./types/database";
 import "./App.css";
 
-function AppContent() {
+function RequireProfile({ children }: { children: (profile: Profile) => ReactNode }) {
   const { session, loading } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -40,23 +43,25 @@ function AppContent() {
     return <OnboardingPage authUserId={session.user.id} onComplete={setProfile} />;
   }
 
-  return (
-    <div className="card">
-      <h1>Welcome, {profile.display_name}</h1>
-      <p className="muted">
-        {profile.type} · {profile.trust_tier}
-      </p>
-      <button className="secondary" onClick={() => supabase.auth.signOut()}>
-        Sign out
-      </button>
-    </div>
-  );
+  return <>{children(profile)}</>;
 }
 
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/artworks/:id" element={<ArtworkPage />} />
+          <Route
+            path="/artworks/new"
+            element={<RequireProfile>{(profile) => <CreateArtworkPage profile={profile} />}</RequireProfile>}
+          />
+          <Route
+            path="/"
+            element={<RequireProfile>{(profile) => <HomePage profile={profile} />}</RequireProfile>}
+          />
+        </Routes>
+      </BrowserRouter>
     </AuthProvider>
   );
 }
