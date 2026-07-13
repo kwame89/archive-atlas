@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabaseClient";
+import { Link } from "react-router-dom";
 import { getPrimaryImageUrls, listArtworksByArtist } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
+import { AppHeader } from "../components/AppHeader";
 import type { Artwork, Profile } from "../types/database";
 
 export function HomePage({ profile }: { profile: Profile }) {
-  const navigate = useNavigate();
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -23,7 +22,9 @@ export function HomePage({ profile }: { profile: Profile }) {
   }, [profile.id]);
 
   return (
-    <div className="card">
+    <div className="page-wide">
+      <AppHeader profile={profile} />
+
       <h1>Welcome, {profile.display_name}</h1>
       <p className="muted">
         {profile.type} · {profile.trust_tier}
@@ -51,16 +52,6 @@ export function HomePage({ profile }: { profile: Profile }) {
           </li>
         ))}
       </ul>
-
-      <button type="button" onClick={() => navigate("/artworks/new")}>
-        + New artwork
-      </button>
-      <button className="secondary" onClick={() => navigate("/collective")}>
-        Collective dashboard
-      </button>
-      <button className="secondary" onClick={() => supabase.auth.signOut()}>
-        Sign out
-      </button>
     </div>
   );
 }

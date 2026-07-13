@@ -297,14 +297,37 @@ export function ArtworkPage() {
           : ""}
       </p>
       <p className="muted">
-        By {names[artwork.root_artist_id] ?? "Unknown"}
-        {collaborators.length > 0 &&
-          `, with ${collaborators.map((c) => c.display_name).join(", ")}`}
+        By{" "}
+        <Link to={`/profiles/${artwork.root_artist_id}`}>
+          {names[artwork.root_artist_id] ?? "Unknown"}
+        </Link>
+        {collaborators.map((c) => (
+          <span key={c.id}>
+            , with <Link to={`/profiles/${c.id}`}>{c.display_name}</Link>
+          </span>
+        ))}
       </p>
       <p className="muted">
-        Owned by {names[artwork.current_owner_id ?? ""] ?? "Unknown"}
-        {artwork.current_custodian_id !== artwork.current_owner_id &&
-          ` · Held by ${names[artwork.current_custodian_id ?? ""] ?? "Unknown"}`}
+        Owned by{" "}
+        {artwork.current_owner_id ? (
+          <Link to={`/profiles/${artwork.current_owner_id}`}>
+            {names[artwork.current_owner_id] ?? "Unknown"}
+          </Link>
+        ) : (
+          "Unknown"
+        )}
+        {artwork.current_custodian_id !== artwork.current_owner_id && (
+          <>
+            {" · Held by "}
+            {artwork.current_custodian_id ? (
+              <Link to={`/profiles/${artwork.current_custodian_id}`}>
+                {names[artwork.current_custodian_id] ?? "Unknown"}
+              </Link>
+            ) : (
+              "Unknown"
+            )}
+          </>
+        )}
       </p>
 
       {canManage && (

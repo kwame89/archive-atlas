@@ -1,7 +1,7 @@
 #root {
   min-height: 100vh;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 24px;
 }
@@ -13,6 +13,87 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 28px;
+  margin-top: 48px;
+}
+
+/* Full-width pages (dashboard, profiles) — fills the window instead of the
+   centered card, in the spirit of a real workspace app. */
+.page-wide {
+  width: 100%;
+  max-width: 1200px;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.app-header .brand {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-h);
+  text-decoration: none;
+}
+
+.app-header nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.app-header nav button {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+
+.profile-header {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+  background: var(--card-bg);
+  color: var(--text);
+}
+
+.tier-badge {
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+}
+
+.profile-bio {
+  max-width: 700px;
+  white-space: pre-wrap;
+}
+
+.profile-edit {
+  max-width: 560px;
 }
 
 .artwork-image {
@@ -238,7 +319,7 @@ button.secondary {
   padding: 0;
   margin: 12px 0 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 14px;
 }
 

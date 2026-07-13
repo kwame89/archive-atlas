@@ -23,6 +23,10 @@ export interface Profile {
   auth_user_id: string | null;
   created_by: string | null;
   claimed_at: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  website_url: string | null;
+  cv_url: string | null;
   created_at: string;
 }
 

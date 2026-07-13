@@ -62,6 +62,54 @@ export async function createProfile(
   return profile;
 }
 
+export interface UpdateProfileInput {
+  displayName?: string;
+  legalName?: string | null;
+  bio?: string | null;
+  websiteUrl?: string | null;
+}
+
+export async function updateProfile(profileId: string, input: UpdateProfileInput): Promise<Profile> {
+  const updates: Record<string, unknown> = {};
+  if (input.displayName !== undefined) updates.display_name = input.displayName;
+  if (input.legalName !== undefined) updates.legal_name = input.legalName || null;
+  if (input.bio !== undefined) updates.bio = input.bio || null;
+  if (input.websiteUrl !== undefined) updates.website_url = input.websiteUrl || null;
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .update(updates)
+    .eq("id", profileId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+/** Uploads an avatar or CV to profile-media and stores its URL on the profile. */
+export async function uploadProfileMedia(
+  profileId: string,
+  file: File,
+  kind: "avatar" | "cv"
+): Promise<string> {
+  const path = `${profileId}/${kind}-${Date.now()}-${file.name}`;
+  const { error: uploadError } = await supabase.storage.from("profile-media").upload(path, file);
+  if (uploadError) throw uploadError;
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from("profile-media").getPublicUrl(path);
+
+  const column = kind === "avatar" ? "avatar_url" : "cv_url";
+  const { error: updateError } = await supabase
+    .from("profiles")
+    .update({ [column]: publicUrl })
+    .eq("id", profileId);
+  if (updateError) throw updateError;
+
+  return publicUrl;
+}
+
 export interface CreateUnclaimedProfileInput {
   displayName: string;
   type: ProfileType;
