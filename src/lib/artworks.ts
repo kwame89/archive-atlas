@@ -95,6 +95,96 @@ export async function updateGenesisDate(eventId: string, dateCreated: string): P
   if (error) throw error;
 }
 
+export interface TransferOwnershipInput {
+  toPartyId: string;
+  price?: number;
+  currency?: string;
+  notes?: string;
+  /** The common direct-sale case: custody moves with ownership. Left off
+   * for the consignment-agent case, where the seller keeps custody of
+   * other consigned pieces but this one's title changes hands. */
+  alsoTransferCustody?: boolean;
+}
+
+/**
+ * Logs an ownership_transfer (sale/gift/inheritance), optionally paired with
+ * a custody_change sharing a transaction_group_id — see SCOPE.md's
+ * consignment-sale worked example for why these are sometimes two events,
+ * not one. `actorId` may be the current owner (selling directly) or the
+ * current custodian acting as an agent (e.g. a consignment gallery) — this
+ * matches the RLS policy, which only checks that actorId is controlled by
+ * the caller, not that they're specifically the owner.
+ */
+export async function transferOwnership(
+  artwork: Artwork,
+  actorId: string,
+  input: TransferOwnershipInput
+): Promise<void> {
+  const transactionGroupId = input.alsoTransferCustody ? crypto.randomUUID() : null;
+
+  const { error: transferError } = await supabase.from("events").insert({
+    type: "ownership_transfer",
+    actor_id: actorId,
+    artwork_id: artwork.id,
+    from_party_id: artwork.current_owner_id,
+    to_party_id: input.toPartyId,
+    price: input.price ?? null,
+    currency: input.currency || "USD",
+    notes: input.notes || null,
+    transaction_group_id: transactionGroupId,
+  });
+  if (transferError) throw transferError;
+
+  const artworkUpdates: Partial<Artwork> = { current_owner_id: input.toPartyId };
+
+  if (input.alsoTransferCustody) {
+    const { error: custodyError } = await supabase.from("events").insert({
+      type: "custody_change",
+      actor_id: actorId,
+      artwork_id: artwork.id,
+      from_party_id: artwork.current_custodian_id,
+      to_party_id: input.toPartyId,
+      transaction_group_id: transactionGroupId,
+    });
+    if (custodyError) throw custodyError;
+    artworkUpdates.current_custodian_id = input.toPartyId;
+  }
+
+  const { error: updateError } = await supabase
+    .from("artworks")
+    .update(artworkUpdates)
+    .eq("id", artwork.id);
+  if (updateError) throw updateError;
+}
+
+export interface ChangeCustodyInput {
+  toPartyId: string;
+  notes?: string;
+}
+
+/** Logs a custody_change (loan/consignment) — ownership is untouched. */
+export async function changeCustody(
+  artwork: Artwork,
+  actorId: string,
+  input: ChangeCustodyInput
+): Promise<void> {
+  const { error: eventError } = await supabase.from("events").insert({
+    type: "custody_change",
+    actor_id: actorId,
+    artwork_id: artwork.id,
+    from_party_id: artwork.current_custodian_id,
+    to_party_id: input.toPartyId,
+    notes: input.notes || null,
+  });
+  if (eventError) throw eventError;
+
+  const { error: updateError } = await supabase
+    .from("artworks")
+    .update({ current_custodian_id: input.toPartyId })
+    .eq("id", artwork.id);
+  if (updateError) throw updateError;
+}
+
 export async function getArtworkImages(artworkId: string): Promise<ArtworkImage[]> {
   const { data, error } = await supabase
     .from("artwork_images")

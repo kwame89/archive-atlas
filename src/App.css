@@ -232,6 +232,27 @@ button.secondary {
   font-size: 0.85rem;
 }
 
+.transfer-form {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  margin-top: 8px;
+}
+
+.mode-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.mode-row label {
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .print-page {
   width: 100%;
   max-width: 700px;

@@ -67,6 +67,21 @@ export async function searchUnclaimedProfiles(query: string): Promise<Profile[]>
   return data ?? [];
 }
 
+/** Searches all profiles regardless of trust tier — used to pick a transfer
+ * recipient. RLS still blocks an unclaimed profile from being made a party
+ * to an ownership_transfer, so an invalid pick surfaces as a clear error
+ * rather than needing to be filtered out here. */
+export async function searchProfiles(query: string): Promise<Profile[]> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .ilike("display_name", `%${query}%`)
+    .limit(20);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 /**
  * Claims a pre-existing unclaimed profile (e.g. one a collective created on
  * an artist's behalf). Same non-atomicity note as createProfile applies.

@@ -15,6 +15,7 @@ import {
   uploadArtworkImages,
 } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
+import { TransferForm } from "../components/TransferForm";
 import type { Artwork, ArtworkEvent, ArtworkImage } from "../types/database";
 
 const EVENT_LABELS: Record<ArtworkEvent["type"], string> = {
@@ -36,6 +37,9 @@ export function ArtworkPage() {
   const [events, setEvents] = useState<ArtworkEvent[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [canManage, setCanManage] = useState(false);
+  const [myProfileId, setMyProfileId] = useState<string | null>(null);
+  const [controlsOwner, setControlsOwner] = useState(false);
+  const [controlsCustodian, setControlsCustodian] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [imageActionError, setImageActionError] = useState("");
@@ -59,36 +63,59 @@ export function ArtworkPage() {
     setEvents(await getArtworkEvents(id));
   }
 
-  useEffect(() => {
+  async function loadAll() {
     if (!id) return;
-    setLoading(true);
     setError("");
-    Promise.all([getArtwork(id), getArtworkEvents(id), getArtworkImages(id)])
-      .then(async ([artworkResult, eventsResult, imagesResult]) => {
-        setArtwork(artworkResult);
-        setEvents(eventsResult);
-        setImages(imagesResult);
+    const [artworkResult, eventsResult, imagesResult] = await Promise.all([
+      getArtwork(id),
+      getArtworkEvents(id),
+      getArtworkImages(id),
+    ]);
+    setArtwork(artworkResult);
+    setEvents(eventsResult);
+    setImages(imagesResult);
 
-        const profileIds = eventsResult.flatMap((e) => [
-          e.actor_id,
-          e.to_party_id,
-          e.from_party_id,
-          e.target_profile_id,
+    const profileIds = eventsResult.flatMap((e) => [
+      e.actor_id,
+      e.to_party_id,
+      e.from_party_id,
+      e.target_profile_id,
+    ]);
+    if (artworkResult) {
+      profileIds.push(
+        artworkResult.root_artist_id,
+        artworkResult.current_owner_id,
+        artworkResult.current_custodian_id
+      );
+    }
+    setNames(await getProfileNames(profileIds.filter((x): x is string => !!x)));
+
+    if (session && artworkResult) {
+      const myProfile = await getMyProfile(session.user.id);
+      if (myProfile) {
+        setMyProfileId(myProfile.id);
+        const [rootControl, ownerControl, custodianControl] = await Promise.all([
+          isController(artworkResult.root_artist_id, myProfile.id),
+          artworkResult.current_owner_id
+            ? isController(artworkResult.current_owner_id, myProfile.id)
+            : false,
+          artworkResult.current_custodian_id
+            ? isController(artworkResult.current_custodian_id, myProfile.id)
+            : false,
         ]);
-        if (artworkResult) profileIds.push(artworkResult.root_artist_id);
-        setNames(await getProfileNames(profileIds.filter((x): x is string => !!x)));
-
-        if (session && artworkResult) {
-          const myProfile = await getMyProfile(session.user.id);
-          if (myProfile) {
-            const controls = await isController(artworkResult.root_artist_id, myProfile.id);
-            setCanManage(controls);
-            if (controls) {
-              setPrivateNotes(await getArtworkPrivateNotes(artworkResult.id));
-            }
-          }
+        setCanManage(rootControl);
+        setControlsOwner(ownerControl);
+        setControlsCustodian(custodianControl);
+        if (rootControl) {
+          setPrivateNotes(await getArtworkPrivateNotes(artworkResult.id));
         }
-      })
+      }
+    }
+  }
+
+  useEffect(() => {
+    setLoading(true);
+    loadAll()
       .catch((err) => setError(getErrorMessage(err)))
       .finally(() => setLoading(false));
   }, [id, session]);
@@ -241,6 +268,11 @@ export function ArtworkPage() {
           : ""}
       </p>
       <p className="muted">By {names[artwork.root_artist_id] ?? "Unknown"}</p>
+      <p className="muted">
+        Owned by {names[artwork.current_owner_id ?? ""] ?? "Unknown"}
+        {artwork.current_custodian_id !== artwork.current_owner_id &&
+          ` · Held by ${names[artwork.current_custodian_id ?? ""] ?? "Unknown"}`}
+      </p>
 
       {(artwork.subject_matter || artwork.art_type) && (
         <p className="muted">
@@ -320,12 +352,33 @@ export function ArtworkPage() {
                 {names[event.to_party_id ?? ""] ?? "Unknown"}
                 {event.price != null &&
                   ` · ${event.currency ?? "USD"} ${event.price.toLocaleString()}`}
+                {event.actor_id !== event.from_party_id &&
+                  ` (via ${names[event.actor_id] ?? "Unknown"})`}
+              </p>
+            )}
+            {event.type === "custody_change" && (
+              <p className="muted">
+                {names[event.from_party_id ?? ""] ?? "Unknown"} →{" "}
+                {names[event.to_party_id ?? ""] ?? "Unknown"}
               </p>
             )}
             {event.notes && <p className="muted">{event.notes}</p>}
           </li>
         ))}
       </ul>
+
+      {(controlsOwner || controlsCustodian) && myProfileId && (
+        <>
+          <h2 className="section-heading">Ownership &amp; custody</h2>
+          <TransferForm
+            artwork={artwork}
+            actorProfileId={myProfileId}
+            controlsOwner={controlsOwner}
+            controlsCustodian={controlsCustodian}
+            onComplete={loadAll}
+          />
+        </>
+      )}
 
       {canManage && (
         <>
