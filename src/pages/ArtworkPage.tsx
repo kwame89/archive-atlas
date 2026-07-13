@@ -3,12 +3,15 @@ import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../lib/AuthProvider";
 import { getMyProfile } from "../lib/profiles";
 import {
+  addCollaborators,
   getArtwork,
+  getArtworkCollaborators,
   getArtworkEvents,
   getArtworkImages,
   getArtworkPrivateNotes,
   getProfileNames,
   isController,
+  removeCollaborator,
   saveArtworkPrivateNotes,
   setPrimaryImage,
   updateGenesisDate,
@@ -16,7 +19,8 @@ import {
 } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
 import { TransferForm } from "../components/TransferForm";
-import type { Artwork, ArtworkEvent, ArtworkImage } from "../types/database";
+import { ProfileSearchAdd } from "../components/ProfileSearchAdd";
+import type { Artwork, ArtworkEvent, ArtworkImage, Profile } from "../types/database";
 
 const EVENT_LABELS: Record<ArtworkEvent["type"], string> = {
   genesis: "Created",
@@ -40,6 +44,8 @@ export function ArtworkPage() {
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const [controlsOwner, setControlsOwner] = useState(false);
   const [controlsCustodian, setControlsCustodian] = useState(false);
+  const [collaborators, setCollaborators] = useState<Profile[]>([]);
+  const [collaboratorError, setCollaboratorError] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [imageActionError, setImageActionError] = useState("");
@@ -66,14 +72,16 @@ export function ArtworkPage() {
   async function loadAll() {
     if (!id) return;
     setError("");
-    const [artworkResult, eventsResult, imagesResult] = await Promise.all([
+    const [artworkResult, eventsResult, imagesResult, collaboratorsResult] = await Promise.all([
       getArtwork(id),
       getArtworkEvents(id),
       getArtworkImages(id),
+      getArtworkCollaborators(id),
     ]);
     setArtwork(artworkResult);
     setEvents(eventsResult);
     setImages(imagesResult);
+    setCollaborators(collaboratorsResult);
 
     const profileIds = eventsResult.flatMap((e) => [
       e.actor_id,
@@ -142,6 +150,28 @@ export function ArtworkPage() {
       setImageActionError(getErrorMessage(err));
     } finally {
       setAddingImages(false);
+    }
+  }
+
+  async function handleAddCollaborator(collaboratorProfile: Profile) {
+    if (!id) return;
+    setCollaboratorError("");
+    try {
+      await addCollaborators(id, [collaboratorProfile.id]);
+      setCollaborators([...collaborators, collaboratorProfile]);
+    } catch (err) {
+      setCollaboratorError(getErrorMessage(err));
+    }
+  }
+
+  async function handleRemoveCollaborator(profileId: string) {
+    if (!id) return;
+    setCollaboratorError("");
+    try {
+      await removeCollaborator(id, profileId);
+      setCollaborators(collaborators.filter((c) => c.id !== profileId));
+    } catch (err) {
+      setCollaboratorError(getErrorMessage(err));
     }
   }
 
@@ -267,12 +297,44 @@ export function ArtworkPage() {
           ? ` · Edition ${artwork.edition_number}/${artwork.edition_total}`
           : ""}
       </p>
-      <p className="muted">By {names[artwork.root_artist_id] ?? "Unknown"}</p>
+      <p className="muted">
+        By {names[artwork.root_artist_id] ?? "Unknown"}
+        {collaborators.length > 0 &&
+          `, with ${collaborators.map((c) => c.display_name).join(", ")}`}
+      </p>
       <p className="muted">
         Owned by {names[artwork.current_owner_id ?? ""] ?? "Unknown"}
         {artwork.current_custodian_id !== artwork.current_owner_id &&
           ` · Held by ${names[artwork.current_custodian_id ?? ""] ?? "Unknown"}`}
       </p>
+
+      {canManage && (
+        <div className="collaborator-manager">
+          <label>Co-artists</label>
+          {collaborators.length > 0 && (
+            <ul className="results">
+              {collaborators.map((c) => (
+                <li key={c.id}>
+                  <span>{c.display_name}</span>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => handleRemoveCollaborator(c.id)}
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <ProfileSearchAdd
+            excludeIds={collaborators.map((c) => c.id)}
+            onAdd={handleAddCollaborator}
+            placeholder="Search for a co-artist…"
+          />
+          {collaboratorError && <p className="error">{collaboratorError}</p>}
+        </div>
+      )}
 
       {(artwork.subject_matter || artwork.art_type) && (
         <p className="muted">

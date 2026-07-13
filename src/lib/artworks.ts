@@ -23,6 +23,8 @@ export interface CreateArtworkInput {
   /** When the work was actually created, if different from today (e.g.
    * archiving an older piece) — becomes the genesis event's occurred_at. */
   dateCreated?: string;
+  /** Co-creators beyond the root artist, for collaborative pieces. */
+  collaboratorIds?: string[];
 }
 
 /**
@@ -78,7 +80,36 @@ export async function createArtwork(
 
   if (eventError) throw eventError;
 
+  if (input.collaboratorIds && input.collaboratorIds.length > 0) {
+    await addCollaborators(artwork.id, input.collaboratorIds);
+  }
+
   return artwork;
+}
+
+export async function getArtworkCollaborators(artworkId: string): Promise<Profile[]> {
+  const { data, error } = await supabase
+    .from("artwork_collaborators")
+    .select("profile_id, profiles(*)")
+    .eq("artwork_id", artworkId);
+  if (error) throw error;
+  return (data ?? []).map((row) => (row as unknown as { profiles: Profile }).profiles);
+}
+
+export async function addCollaborators(artworkId: string, profileIds: string[]): Promise<void> {
+  const { error } = await supabase
+    .from("artwork_collaborators")
+    .insert(profileIds.map((profile_id) => ({ artwork_id: artworkId, profile_id })));
+  if (error) throw error;
+}
+
+export async function removeCollaborator(artworkId: string, profileId: string): Promise<void> {
+  const { error } = await supabase
+    .from("artwork_collaborators")
+    .delete()
+    .eq("artwork_id", artworkId)
+    .eq("profile_id", profileId);
+  if (error) throw error;
 }
 
 /**

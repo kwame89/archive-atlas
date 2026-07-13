@@ -58,7 +58,8 @@
   gap: 4px;
 }
 
-.add-images {
+.add-images,
+.collaborator-manager {
   margin-bottom: 16px;
 }
 

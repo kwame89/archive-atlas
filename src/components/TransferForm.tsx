@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { changeCustody, transferOwnership } from "../lib/artworks";
-import { searchProfiles } from "../lib/profiles";
 import { getErrorMessage } from "../lib/errors";
+import { ProfileSearchAdd } from "./ProfileSearchAdd";
 import type { Artwork, Profile } from "../types/database";
 
 interface TransferFormProps {
@@ -23,8 +23,6 @@ export function TransferForm({
 }: TransferFormProps) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>(controlsOwner ? "ownership" : "custody");
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Profile[]>([]);
   const [recipient, setRecipient] = useState<Profile | null>(null);
   const [price, setPrice] = useState("");
   const [currency, setCurrency] = useState("USD");
@@ -32,16 +30,6 @@ export function TransferForm({
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-
-  async function handleSearch(event: FormEvent) {
-    event.preventDefault();
-    setError("");
-    try {
-      setResults(await searchProfiles(query));
-    } catch (err) {
-      setError(getErrorMessage(err));
-    }
-  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -68,8 +56,6 @@ export function TransferForm({
       }
       setOpen(false);
       setRecipient(null);
-      setQuery("");
-      setResults([]);
       setPrice("");
       setNotes("");
       onComplete();
@@ -114,28 +100,10 @@ export function TransferForm({
       )}
 
       {!recipient ? (
-        <form onSubmit={handleSearch}>
-          <label htmlFor="recipientSearch">Recipient</label>
-          <input
-            id="recipientSearch"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search profiles by name…"
-          />
-          <button type="submit">Search</button>
-          <ul className="results">
-            {results.map((p) => (
-              <li key={p.id}>
-                <span>
-                  {p.display_name} ({p.type})
-                </span>
-                <button type="button" onClick={() => setRecipient(p)}>
-                  Select
-                </button>
-              </li>
-            ))}
-          </ul>
-        </form>
+        <>
+          <label>Recipient</label>
+          <ProfileSearchAdd excludeIds={[]} onAdd={setRecipient} placeholder="Search profiles by name…" />
+        </>
       ) : (
         <form onSubmit={handleSubmit}>
           <p className="muted">

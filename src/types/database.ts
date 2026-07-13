@@ -58,6 +58,13 @@ export interface Artwork {
   created_at: string;
 }
 
+export interface ArtworkCollaborator {
+  artwork_id: string;
+  profile_id: string;
+  role: string | null;
+  added_at: string;
+}
+
 export interface ArtworkPrivateNotes {
   artwork_id: string;
   notes: string;

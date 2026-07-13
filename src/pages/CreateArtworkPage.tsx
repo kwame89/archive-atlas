@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { createArtwork, saveArtworkPrivateNotes, uploadArtworkImages } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
+import { ProfileSearchAdd } from "../components/ProfileSearchAdd";
 import type { Profile } from "../types/database";
 
 const CONDITION_OPTIONS = ["Excellent", "Good", "Fair", "Poor", "Needs restoration"];
@@ -26,6 +27,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
   const [isSigned, setIsSigned] = useState(false);
   const [signatureNotes, setSignatureNotes] = useState("");
   const [condition, setCondition] = useState("");
+  const [collaborators, setCollaborators] = useState<Profile[]>([]);
   const [privateNotes, setPrivateNotes] = useState("");
   const [dateCreated, setDateCreated] = useState(() => new Date().toISOString().slice(0, 10));
   const [images, setImages] = useState<File[]>([]);
@@ -75,6 +77,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
         signatureNotes: signatureNotes || undefined,
         condition: condition || undefined,
         dateCreated: dateCreated || undefined,
+        collaboratorIds: collaborators.map((c) => c.id),
       });
 
       if (privateNotes) {
@@ -108,6 +111,29 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
       <form onSubmit={handleSubmit}>
         <label htmlFor="title">Title</label>
         <input id="title" required value={title} onChange={(e) => setTitle(e.target.value)} />
+
+        <label>Co-artists (for collaborative pieces)</label>
+        {collaborators.length > 0 && (
+          <ul className="results">
+            {collaborators.map((c) => (
+              <li key={c.id}>
+                <span>{c.display_name}</span>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setCollaborators(collaborators.filter((x) => x.id !== c.id))}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <ProfileSearchAdd
+          excludeIds={collaborators.map((c) => c.id)}
+          onAdd={(p) => setCollaborators([...collaborators, p])}
+          placeholder="Search for a co-artist…"
+        />
 
         <label htmlFor="description">Description</label>
         <textarea
