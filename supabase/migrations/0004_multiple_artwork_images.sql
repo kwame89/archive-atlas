@@ -15,12 +15,21 @@ create unique index artwork_images_one_primary_per_artwork
   on artwork_images (artwork_id)
   where is_primary;
 
--- Carry over any existing single image_url values as each artwork's
--- primary image before dropping the column.
-insert into artwork_images (artwork_id, url, is_primary)
-select id, image_url, true from artworks where image_url is not null;
+-- Carry over any existing single image_url values as each artwork's primary
+-- image before dropping the column — guarded, since migration 0003 (which
+-- added that column) may or may not have actually been run first.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_name = 'artworks' and column_name = 'image_url'
+  ) then
+    insert into artwork_images (artwork_id, url, is_primary)
+    select id, image_url, true from artworks where image_url is not null;
 
-alter table artworks drop column image_url;
+    alter table artworks drop column image_url;
+  end if;
+end $$;
 
 alter table artwork_images enable row level security;
 
