@@ -1,5 +1,12 @@
 import { supabase } from "./supabaseClient";
+import { isController } from "./artworks";
 import type { Profile, ProfileType } from "../types/database";
+
+export async function getProfile(id: string): Promise<Profile | null> {
+  const { data, error } = await supabase.from("profiles").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data;
+}
 
 export async function getMyProfile(authUserId: string): Promise<Profile | null> {
   const { data, error } = await supabase
@@ -53,6 +60,72 @@ export async function createProfile(
   if (controllerError) throw controllerError;
 
   return profile;
+}
+
+export interface CreateUnclaimedProfileInput {
+  displayName: string;
+  type: ProfileType;
+  legalName?: string;
+}
+
+/**
+ * Creates a placeholder profile on behalf of an artist who isn't on the
+ * platform yet — the cold-start mechanism from SCOPE.md. Unlike
+ * createProfile, this is never auth_user_id-linked and has no controller
+ * until claimed; creatorProfileId (recorded as created_by) is what lets the
+ * creator act for it in the meantime, via auth_controls_or_created_unclaimed.
+ */
+export async function createUnclaimedProfile(
+  creatorProfileId: string,
+  input: CreateUnclaimedProfileInput
+): Promise<Profile> {
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .insert({
+      type: input.type,
+      display_name: input.displayName,
+      legal_name: input.legalName || null,
+      trust_tier: "unclaimed",
+      is_public: true,
+      created_by: creatorProfileId,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return profile;
+}
+
+export async function listProfilesCreatedBy(creatorProfileId: string): Promise<Profile[]> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("created_by", creatorProfileId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+/**
+ * Whether myProfileId can act for targetProfileId — either as a direct
+ * controller, or as the creator of a still-unclaimed placeholder profile.
+ * Use this in place of a bare isController check anywhere "can manage this
+ * artwork" needs to account for the collective-created-it-on-their-behalf
+ * case (canManage, controlsOwner, controlsCustodian on the artwork page).
+ */
+export async function canActFor(targetProfileId: string, myProfileId: string): Promise<boolean> {
+  if (await isController(targetProfileId, myProfileId)) return true;
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("trust_tier, created_by")
+    .eq("id", targetProfileId)
+    .maybeSingle();
+  if (error) throw error;
+
+  if (data?.trust_tier === "unclaimed" && data.created_by) {
+    return isController(data.created_by, myProfileId);
+  }
+  return false;
 }
 
 export async function searchUnclaimedProfiles(query: string): Promise<Profile[]> {

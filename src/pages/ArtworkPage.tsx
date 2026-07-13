@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../lib/AuthProvider";
-import { getMyProfile } from "../lib/profiles";
+import { getMyProfile, canActFor } from "../lib/profiles";
 import {
   addCollaborators,
   getArtwork,
@@ -10,7 +10,6 @@ import {
   getArtworkImages,
   getArtworkPrivateNotes,
   getProfileNames,
-  isController,
   removeCollaborator,
   saveArtworkPrivateNotes,
   setPrimaryImage,
@@ -103,12 +102,12 @@ export function ArtworkPage() {
       if (myProfile) {
         setMyProfileId(myProfile.id);
         const [rootControl, ownerControl, custodianControl] = await Promise.all([
-          isController(artworkResult.root_artist_id, myProfile.id),
+          canActFor(artworkResult.root_artist_id, myProfile.id),
           artworkResult.current_owner_id
-            ? isController(artworkResult.current_owner_id, myProfile.id)
+            ? canActFor(artworkResult.current_owner_id, myProfile.id)
             : false,
           artworkResult.current_custodian_id
-            ? isController(artworkResult.current_custodian_id, myProfile.id)
+            ? canActFor(artworkResult.current_custodian_id, myProfile.id)
             : false,
         ]);
         setCanManage(rootControl);

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { createArtwork, saveArtworkPrivateNotes, uploadArtworkImages } from "../lib/artworks";
+import { getProfile } from "../lib/profiles";
 import { getErrorMessage } from "../lib/errors";
 import { ProfileSearchAdd } from "../components/ProfileSearchAdd";
 import type { Profile } from "../types/database";
@@ -9,6 +10,10 @@ const CONDITION_OPTIONS = ["Excellent", "Good", "Fair", "Poor", "Needs restorati
 
 export function CreateArtworkPage({ profile }: { profile: Profile }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const onBehalfOfId = searchParams.get("onBehalfOf");
+  const [onBehalfOfProfile, setOnBehalfOfProfile] = useState<Profile | null>(null);
+  const [onBehalfOfError, setOnBehalfOfError] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [medium, setMedium] = useState("");
@@ -42,6 +47,13 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
     return () => urls.forEach((url) => URL.revokeObjectURL(url));
   }, [images]);
 
+  useEffect(() => {
+    if (!onBehalfOfId) return;
+    getProfile(onBehalfOfId)
+      .then(setOnBehalfOfProfile)
+      .catch((err) => setOnBehalfOfError(getErrorMessage(err)));
+  }, [onBehalfOfId]);
+
   function handleFilesSelected(files: File[]) {
     setImages(files);
     setPrimaryIndex(0);
@@ -52,33 +64,38 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
     setSubmitting(true);
     setError("");
     try {
-      const artwork = await createArtwork(profile.id, {
-        title,
-        description: description || undefined,
-        medium: medium || undefined,
-        dimensions: dimensionsOverride || undefined,
-        height: height ? Number(height) : undefined,
-        width: width ? Number(width) : undefined,
-        depth: depth ? Number(depth) : undefined,
-        year: year ? Number(year) : undefined,
-        isCirca,
-        dateDisplayOverride: dateDisplayOverride || undefined,
-        editionNumber: editionNumber ? Number(editionNumber) : undefined,
-        editionTotal: editionTotal ? Number(editionTotal) : undefined,
-        subjectMatter: subjectMatter || undefined,
-        artType: artType || undefined,
-        tags: tags
-          ? tags
-              .split(",")
-              .map((t) => t.trim())
-              .filter(Boolean)
-          : undefined,
-        isSigned,
-        signatureNotes: signatureNotes || undefined,
-        condition: condition || undefined,
-        dateCreated: dateCreated || undefined,
-        collaboratorIds: collaborators.map((c) => c.id),
-      });
+      const rootArtistId = onBehalfOfProfile?.id ?? profile.id;
+      const artwork = await createArtwork(
+        rootArtistId,
+        {
+          title,
+          description: description || undefined,
+          medium: medium || undefined,
+          dimensions: dimensionsOverride || undefined,
+          height: height ? Number(height) : undefined,
+          width: width ? Number(width) : undefined,
+          depth: depth ? Number(depth) : undefined,
+          year: year ? Number(year) : undefined,
+          isCirca,
+          dateDisplayOverride: dateDisplayOverride || undefined,
+          editionNumber: editionNumber ? Number(editionNumber) : undefined,
+          editionTotal: editionTotal ? Number(editionTotal) : undefined,
+          subjectMatter: subjectMatter || undefined,
+          artType: artType || undefined,
+          tags: tags
+            ? tags
+                .split(",")
+                .map((t) => t.trim())
+                .filter(Boolean)
+            : undefined,
+          isSigned,
+          signatureNotes: signatureNotes || undefined,
+          condition: condition || undefined,
+          dateCreated: dateCreated || undefined,
+          collaboratorIds: collaborators.map((c) => c.id),
+        },
+        profile.id
+      );
 
       if (privateNotes) {
         await saveArtworkPrivateNotes(artwork.id, privateNotes);
@@ -106,8 +123,18 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
   return (
     <div className="card">
       <h1>New artwork</h1>
-      <p className="muted">This logs the genesis record — you as creator, initial owner, and
-        initial custodian.</p>
+      {onBehalfOfId && onBehalfOfProfile ? (
+        <p className="muted">
+          Logging historical work on behalf of <strong>{onBehalfOfProfile.display_name}</strong>{" "}
+          (unclaimed) — they'll be credited as creator, initial owner, and initial custodian; you
+          are recorded as the one who logged it.
+        </p>
+      ) : (
+        <p className="muted">
+          This logs the genesis record — you as creator, initial owner, and initial custodian.
+        </p>
+      )}
+      {onBehalfOfError && <p className="error">{onBehalfOfError}</p>}
       <form onSubmit={handleSubmit}>
         <label htmlFor="title">Title</label>
         <input id="title" required value={title} onChange={(e) => setTitle(e.target.value)} />

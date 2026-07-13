@@ -41,6 +41,9 @@ export function HomePage({ profile }: { profile: Profile }) {
       <button type="button" onClick={() => navigate("/artworks/new")}>
         + New artwork
       </button>
+      <button className="secondary" onClick={() => navigate("/collective")}>
+        Collective dashboard
+      </button>
       <button className="secondary" onClick={() => supabase.auth.signOut()}>
         Sign out
       </button>

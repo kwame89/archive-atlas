@@ -28,15 +28,20 @@ export interface CreateArtworkInput {
 }
 
 /**
- * Logs the genesis event for a new artwork: the creating profile is both
- * initial owner and custodian. Two sequential requests, same non-atomicity
- * note as profiles.ts — a dropped connection between them leaves an artwork
- * with no genesis event logged, which is visible (empty provenance) rather
- * than silently wrong, and safe to retry by re-inserting the event.
+ * Logs the genesis event for a new artwork: rootArtistId is credited as
+ * creator/initial owner/custodian. actorId (who is actually performing this
+ * action) defaults to rootArtistId — the normal self-creation case — but
+ * differs when a collective logs historical work on behalf of an unclaimed
+ * artist profile it created, matching the actor/party split used elsewhere
+ * (see transferOwnership). Two sequential requests, same non-atomicity note
+ * as profiles.ts — a dropped connection between them leaves an artwork with
+ * no genesis event logged, which is visible (empty provenance) rather than
+ * silently wrong, and safe to retry by re-inserting the event.
  */
 export async function createArtwork(
   rootArtistId: string,
-  input: CreateArtworkInput
+  input: CreateArtworkInput,
+  actorId: string = rootArtistId
 ): Promise<Artwork> {
   const { data: artwork, error: insertError } = await supabase
     .from("artworks")
@@ -70,7 +75,7 @@ export async function createArtwork(
 
   const { error: eventError } = await supabase.from("events").insert({
     type: "genesis",
-    actor_id: rootArtistId,
+    actor_id: actorId,
     artwork_id: artwork.id,
     to_party_id: rootArtistId,
     occurred_at: input.dateCreated

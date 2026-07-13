@@ -8,6 +8,7 @@ import { HomePage } from "./pages/HomePage";
 import { CreateArtworkPage } from "./pages/CreateArtworkPage";
 import { ArtworkPage } from "./pages/ArtworkPage";
 import { ArtworkPrintPage } from "./pages/ArtworkPrintPage";
+import { CollectiveDashboardPage } from "./pages/CollectiveDashboardPage";
 import type { Profile } from "./types/database";
 import "./App.css";
 
@@ -57,6 +58,12 @@ function App() {
           <Route
             path="/artworks/new"
             element={<RequireProfile>{(profile) => <CreateArtworkPage profile={profile} />}</RequireProfile>}
+          />
+          <Route
+            path="/collective"
+            element={
+              <RequireProfile>{(profile) => <CollectiveDashboardPage profile={profile} />}</RequireProfile>
+            }
           />
           <Route
             path="/"
