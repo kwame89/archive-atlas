@@ -244,6 +244,8 @@ export function ArtworkPage() {
               <p className="muted">
                 {names[event.from_party_id ?? ""] ?? "Unknown"} →{" "}
                 {names[event.to_party_id ?? ""] ?? "Unknown"}
+                {event.price != null &&
+                  ` · ${event.currency ?? "USD"} ${event.price.toLocaleString()}`}
               </p>
             )}
             {event.notes && <p className="muted">{event.notes}</p>}

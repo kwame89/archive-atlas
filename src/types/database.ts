@@ -66,6 +66,8 @@ export interface ArtworkEvent {
   transaction_group_id: string | null;
   occurred_at: string;
   on_chain_anchor_hash: string | null;
+  price: number | null;
+  currency: string | null;
   notes: string | null;
   created_at: string;
 }
