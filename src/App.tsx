@@ -7,6 +7,7 @@ import { OnboardingPage } from "./pages/OnboardingPage";
 import { HomePage } from "./pages/HomePage";
 import { CreateArtworkPage } from "./pages/CreateArtworkPage";
 import { ArtworkPage } from "./pages/ArtworkPage";
+import { ArtworkPrintPage } from "./pages/ArtworkPrintPage";
 import type { Profile } from "./types/database";
 import "./App.css";
 
@@ -52,6 +53,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/artworks/:id" element={<ArtworkPage />} />
+          <Route path="/artworks/:id/print" element={<ArtworkPrintPage />} />
           <Route
             path="/artworks/new"
             element={<RequireProfile>{(profile) => <CreateArtworkPage profile={profile} />}</RequireProfile>}

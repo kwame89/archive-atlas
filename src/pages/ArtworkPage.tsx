@@ -359,7 +359,9 @@ export function ArtworkPage() {
         </>
       )}
 
-      <Link to="/">Back home</Link>
+      <p className="muted">
+        <Link to="/">Back home</Link> · <Link to={`/artworks/${artwork.id}/print`}>Print / Save as PDF</Link>
+      </p>
     </div>
   );
 }

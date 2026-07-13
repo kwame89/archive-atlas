@@ -231,3 +231,60 @@ button.secondary {
   padding: 6px 10px;
   font-size: 0.85rem;
 }
+
+.print-page {
+  width: 100%;
+  max-width: 700px;
+}
+
+.print-button {
+  margin-bottom: 16px;
+}
+
+/* Print output should always look like paper — white background, dark
+   text — regardless of the app's dark theme. */
+.print-sheet {
+  background: #ffffff;
+  color: #111111;
+  padding: 32px;
+  border-radius: 8px;
+}
+
+.print-sheet img {
+  width: 100%;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.print-sheet h1 {
+  color: #111111;
+  margin: 0 0 4px;
+}
+
+.print-sheet p {
+  margin: 0 0 10px;
+}
+
+.print-byline {
+  font-style: italic;
+  opacity: 0.75;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  #root {
+    display: block;
+    padding: 0;
+    min-height: 0;
+  }
+  .print-page {
+    max-width: 100%;
+  }
+  .print-sheet {
+    padding: 0;
+    border-radius: 0;
+  }
+}
