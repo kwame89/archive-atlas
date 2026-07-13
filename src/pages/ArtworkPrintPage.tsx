@@ -49,8 +49,12 @@ export function ArtworkPrintPage() {
   return (
     <div className="print-page">
       <button type="button" className="no-print print-button" onClick={() => window.print()}>
-        Print / Save as PDF
+        Print
       </button>
+      <p className="muted no-print">
+        In the dialog, choose "Save as PDF" from the destination/printer list to export a PDF
+        instead of printing.
+      </p>
 
       <div className="print-sheet">
         {primaryImage && <img src={primaryImage.url} alt={artwork.title} />}

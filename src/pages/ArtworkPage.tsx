@@ -360,7 +360,7 @@ export function ArtworkPage() {
       )}
 
       <p className="muted">
-        <Link to="/">Back home</Link> · <Link to={`/artworks/${artwork.id}/print`}>Print / Save as PDF</Link>
+        <Link to="/">Back home</Link> · <Link to={`/artworks/${artwork.id}/print`}>Print</Link>
       </p>
     </div>
   );
