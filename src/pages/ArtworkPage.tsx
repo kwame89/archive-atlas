@@ -424,6 +424,17 @@ export function ArtworkPage() {
               </p>
             )}
             {event.notes && <p className="muted">{event.notes}</p>}
+            {event.on_chain_anchor_hash && (
+              <p className="muted">
+                <a
+                  href={`https://stellar.expert/explorer/testnet/tx/${event.on_chain_anchor_hash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Anchored on Stellar →
+                </a>
+              </p>
+            )}
           </li>
         ))}
       </ul>

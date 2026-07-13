@@ -1,5 +1,5 @@
 import { supabase } from "./supabaseClient";
-import { isController } from "./artworks";
+import { anchorEvent, isController } from "./artworks";
 import type { Profile, ProfileType } from "../types/database";
 
 export async function getProfile(id: string): Promise<Profile | null> {
@@ -181,14 +181,19 @@ export async function claimProfile(authUserId: string, profileId: string): Promi
 
   if (controllerError) throw controllerError;
 
-  const { error: eventError } = await supabase.from("events").insert({
-    type: "claim",
-    actor_id: profile.id,
-    target_profile_id: profile.id,
-    notes: "Claimed via self-service email/social verification.",
-  });
+  const { data: claimEvent, error: eventError } = await supabase
+    .from("events")
+    .insert({
+      type: "claim",
+      actor_id: profile.id,
+      target_profile_id: profile.id,
+      notes: "Claimed via self-service email/social verification.",
+    })
+    .select()
+    .single();
 
   if (eventError) throw eventError;
+  anchorEvent(claimEvent.id);
 
   return profile;
 }

@@ -73,23 +73,42 @@ export async function createArtwork(
 
   if (insertError) throw insertError;
 
-  const { error: eventError } = await supabase.from("events").insert({
-    type: "genesis",
-    actor_id: actorId,
-    artwork_id: artwork.id,
-    to_party_id: rootArtistId,
-    occurred_at: input.dateCreated
-      ? new Date(input.dateCreated).toISOString()
-      : new Date().toISOString(),
-  });
+  const { data: genesisEvent, error: eventError } = await supabase
+    .from("events")
+    .insert({
+      type: "genesis",
+      actor_id: actorId,
+      artwork_id: artwork.id,
+      to_party_id: rootArtistId,
+      occurred_at: input.dateCreated
+        ? new Date(input.dateCreated).toISOString()
+        : new Date().toISOString(),
+    })
+    .select()
+    .single();
 
   if (eventError) throw eventError;
+  anchorEvent(genesisEvent.id);
 
   if (input.collaboratorIds && input.collaboratorIds.length > 0) {
     await addCollaborators(artwork.id, input.collaboratorIds);
   }
 
   return artwork;
+}
+
+/**
+ * Fire-and-forget: asks the anchor-event Edge Function to anchor this
+ * event's hash on Stellar testnet. Deliberately not awaited by callers and
+ * failures are only logged, not thrown — anchoring is a nice-to-have layered
+ * on top of the already-saved database record, not something a flaky
+ * network or a not-yet-deployed function should turn into a user-facing
+ * error on an otherwise-successful action.
+ */
+export function anchorEvent(eventId: string): void {
+  supabase.functions.invoke("anchor-event", { body: { eventId } }).then(({ error }) => {
+    if (error) console.warn(`Failed to anchor event ${eventId} on Stellar`, error);
+  });
 }
 
 export async function getArtworkCollaborators(artworkId: string): Promise<Profile[]> {
@@ -158,31 +177,41 @@ export async function transferOwnership(
 ): Promise<void> {
   const transactionGroupId = input.alsoTransferCustody ? crypto.randomUUID() : null;
 
-  const { error: transferError } = await supabase.from("events").insert({
-    type: "ownership_transfer",
-    actor_id: actorId,
-    artwork_id: artwork.id,
-    from_party_id: artwork.current_owner_id,
-    to_party_id: input.toPartyId,
-    price: input.price ?? null,
-    currency: input.currency || "USD",
-    notes: input.notes || null,
-    transaction_group_id: transactionGroupId,
-  });
+  const { data: transferEvent, error: transferError } = await supabase
+    .from("events")
+    .insert({
+      type: "ownership_transfer",
+      actor_id: actorId,
+      artwork_id: artwork.id,
+      from_party_id: artwork.current_owner_id,
+      to_party_id: input.toPartyId,
+      price: input.price ?? null,
+      currency: input.currency || "USD",
+      notes: input.notes || null,
+      transaction_group_id: transactionGroupId,
+    })
+    .select()
+    .single();
   if (transferError) throw transferError;
+  anchorEvent(transferEvent.id);
 
   const artworkUpdates: Partial<Artwork> = { current_owner_id: input.toPartyId };
 
   if (input.alsoTransferCustody) {
-    const { error: custodyError } = await supabase.from("events").insert({
-      type: "custody_change",
-      actor_id: actorId,
-      artwork_id: artwork.id,
-      from_party_id: artwork.current_custodian_id,
-      to_party_id: input.toPartyId,
-      transaction_group_id: transactionGroupId,
-    });
+    const { data: custodyEvent, error: custodyError } = await supabase
+      .from("events")
+      .insert({
+        type: "custody_change",
+        actor_id: actorId,
+        artwork_id: artwork.id,
+        from_party_id: artwork.current_custodian_id,
+        to_party_id: input.toPartyId,
+        transaction_group_id: transactionGroupId,
+      })
+      .select()
+      .single();
     if (custodyError) throw custodyError;
+    anchorEvent(custodyEvent.id);
     artworkUpdates.current_custodian_id = input.toPartyId;
   }
 
@@ -204,15 +233,20 @@ export async function changeCustody(
   actorId: string,
   input: ChangeCustodyInput
 ): Promise<void> {
-  const { error: eventError } = await supabase.from("events").insert({
-    type: "custody_change",
-    actor_id: actorId,
-    artwork_id: artwork.id,
-    from_party_id: artwork.current_custodian_id,
-    to_party_id: input.toPartyId,
-    notes: input.notes || null,
-  });
+  const { data: custodyEvent, error: eventError } = await supabase
+    .from("events")
+    .insert({
+      type: "custody_change",
+      actor_id: actorId,
+      artwork_id: artwork.id,
+      from_party_id: artwork.current_custodian_id,
+      to_party_id: input.toPartyId,
+      notes: input.notes || null,
+    })
+    .select()
+    .single();
   if (eventError) throw eventError;
+  anchorEvent(custodyEvent.id);
 
   const { error: updateError } = await supabase
     .from("artworks")
