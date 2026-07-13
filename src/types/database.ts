@@ -62,17 +62,3 @@ export interface ArtworkEvent {
   created_at: string;
 }
 
-export interface Database {
-  public: {
-    Tables: {
-      profiles: { Row: Profile; Insert: Partial<Profile>; Update: Partial<Profile> };
-      profile_controllers: {
-        Row: ProfileController;
-        Insert: Partial<ProfileController>;
-        Update: Partial<ProfileController>;
-      };
-      artworks: { Row: Artwork; Insert: Partial<Artwork>; Update: Partial<Artwork> };
-      events: { Row: ArtworkEvent; Insert: Partial<ArtworkEvent>; Update: Partial<ArtworkEvent> };
-    };
-  };
-}
