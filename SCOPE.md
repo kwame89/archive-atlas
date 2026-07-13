@@ -58,39 +58,77 @@ The **claim event itself is logged in the audit trail** — "profile created by 
 artist on [date]" — so anything attested before the claim stays honestly labeled instead of
 silently becoming artist-verified retroactively.
 
-## Core Data Model (draft)
+## Core Data Model (as implemented)
 
-**Profile** — type: `artist | collective | gallery | curator | collector`; trust_tier;
-optional legal/business name; optional linked Stellar public key; `created_by` (nullable, for
-unclaimed profiles); `claimed_at` (nullable); `controllers` — one or more Profiles currently
-authorized to act as `actor` on this profile's behalf (see Profile control & succession, below).
+_This section describes the actual database schema (migrations 0001–0011), not just the
+conceptual design — implementation status is called out inline below wherever what's built
+diverges from what was originally designed._
 
-**Artwork** — title, medium, dimensions, year, edition info (see below), root artist reference,
-genesis event reference.
+**profiles** — `id`, `type` (`artist | collective | gallery | curator | collector`),
+`trust_tier` (`unclaimed | claimed | wallet_linked | entity`), `display_name`, `legal_name`,
+`linked_wallet`, `is_public`, `auth_user_id` (nullable — set on claim), `created_by` (nullable,
+for unclaimed profiles), `claimed_at`, `created_at`.
 
-**Event** — the core audit-trail unit. Distinct types matter here — see the custody-vs-ownership
-note below:
-- `genesis` — artist/collective creates the canonical record for a new work
-- `ownership_transfer` — title changes hands (sale, gift, inheritance)
-- `custody_change` — physical possession changes, ownership does *not* (loan, consignment)
-- `exhibition` — curator logs a showing
-- `claim` — profile claimed by its rightful artist
-- `condition_report` — optional, condition/appraisal notes over time
-- `dispute` — a claimed artist flags a pre-claim event on their profile as inaccurate or
-  unauthorized. Never deletes the disputed event — audit trails don't silently erase — but
-  downgrades its trust tier and surfaces the dispute alongside it.
-- `succession` — updates a profile's controller set (see Profile control & succession, below).
+**profile_controllers** — `profile_id`, `controller_profile_id`, `added_at`. The actual
+"controllers" mechanism, as a join table rather than an array column — see Profile control &
+succession below for the full design. What's actually implemented of it is just the bootstrap
+case (a profile becomes its own first controller on claim/creation); full succession and
+multisig-threshold approval are not built.
+
+**artworks** — `id`, `title`, `medium`, `dimensions` (free-text override), `height`/`width`/
+`depth` (structured, numeric), `year`, `is_circa`, `date_display_override` (for imprecise dates
+like "1970s"), `edition_number`/`edition_total`, `description` (public), `tags` (text array),
+`subject_matter`, `art_type`, `is_signed`, `signature_notes`, `condition`, `root_artist_id`,
+`current_owner_id`, `current_custodian_id`, `created_at`. The detail fields beyond the original
+draft (description, structured dimensions, tags, subject matter, signature, condition, circa
+dates) were added after a direct comparison against Artwork Archive's actual piece record —
+see git history around migration 0008.
+
+**artwork_images** — one-to-many (an artwork can have multiple images), `id`, `artwork_id`,
+`url`, `is_primary`, `created_at`, with a partial unique index enforcing at most one primary per
+artwork. Backed by a public Supabase Storage bucket (`artwork-images`).
+
+**artwork_private_notes** — `artwork_id` (PK), `notes`, `updated_at`. Deliberately its own table
+rather than a column on `artworks`, so "always private" is a real RLS guarantee rather than
+something only the UI chooses not to show (artworks.* is fully public-readable via a plain
+`select *`).
+
+**artwork_collaborators** — `artwork_id`, `profile_id`, `role`, `added_at`. Additional co-creators
+beyond `root_artist_id`, for collaborative pieces. Attribution-only: collaborators are publicly
+credited but do not get management rights over the artwork record (images, description,
+transfers) — that stays with the root artist's controllers.
+
+**events** — the core audit-trail unit. `id`, `type`, `actor_id` (who executed/logged it — may be
+an agent, e.g. a gallery), `artwork_id`, `target_profile_id` (used by `claim`), `from_party_id`/
+`to_party_id` (whose ownership/custody actually changed — may differ from actor), 
+`disputed_event_id`, `transaction_group_id` (links events fired together as one real-world
+transaction), `occurred_at`, `on_chain_anchor_hash` (column exists, never populated — Stellar
+anchoring hasn't been built yet, see MVP Build Plan below), `price`, `currency`, `notes`,
+`created_at`.
+
+Event types defined in the `event_type` enum:
+- `genesis` — **implemented.** Artist/collective creates the canonical record for a new work.
+- `ownership_transfer` — **implemented.** Title changes hands (sale, gift, inheritance); `price`/
+  `currency` populated for real sales.
+- `custody_change` — **implemented.** Physical possession changes, ownership does not (loan,
+  consignment).
+- `claim` — **implemented.** Profile claimed by its rightful artist.
+- `exhibition` — **defined, not implemented.** No logging UI or function exists yet; the Curator
+  role currently has no actual functionality.
+- `condition_report` — **defined, not implemented.**
+- `dispute` — **defined, not implemented.** Lower priority, deferred deliberately.
+- `succession` — **defined, not implemented.** Lower priority, deferred deliberately.
 
 **Unclaimed profiles are restricted** to being the `party` in `genesis`, `custody_change`, and
-`exhibition` events only. `ownership_transfer` requires at least the `claimed` tier. This exists
-specifically to prevent a collective (or anyone) from executing a real sale under an artist's
-name before that artist has ever consented to being on the platform — a direct impersonation
-risk otherwise, and one that cuts against the whole artist-power premise.
+`exhibition` events only — enforced at the RLS layer for `ownership_transfer` (requires at least
+`claimed`). This exists specifically to prevent a collective (or anyone) from executing a real
+sale under an artist's name before that artist has ever consented to being on the platform.
 
-Every event: `actor` (who executed/logged the event — may be an agent, e.g. a gallery), `party`
-(whose ownership/custody actually changed — may differ from actor), timestamp, artwork
-reference, type, prior-state reference, optional `transaction_group_id` (links multiple events
-fired together as one real-world transaction), notes/attachments, on-chain anchor hash.
+**A collective can also act on behalf of an unclaimed profile it created** — via
+`auth_controls_or_created_unclaimed()`, a Postgres RLS helper checking either direct control or
+"I created this still-unclaimed profile." This is what makes the collective dashboard's "log a
+work on their behalf" flow possible, and is swapped into every policy that gates artwork
+management (insert/update on artworks, images, private notes, collaborators).
 
 The actor/party split and transaction grouping exist specifically to handle agent-executed sales
 — see the worked example below.
@@ -172,7 +210,9 @@ rather than the record being silently rewritten.
 royalty percentage, unenforced in the MVP. This is the seed for enforceable artist resale
 royalties once a payment/settlement layer exists in Phase 2 — a real, largely unsolved gap in
 the US art market (droit de suite barely exists here and is poorly enforced even in
-jurisdictions that have it).
+jurisdictions that have it). **Status: designed, never implemented** — no field for this exists
+anywhere in the actual schema. Worth picking back up; it's a small addition (one nullable numeric
+column on `artworks` or `events`) with real relevance to the mission.
 
 ## Where Stellar Fits (MVP)
 
@@ -209,22 +249,31 @@ provenance and the art market actually function:
 
 ## MVP Build Plan
 
-**Screens:** artwork page (public provenance timeline), profile page (trust-tier badge, claim
-status), claim flow (email/social verification), role-gated event-logging forms, a
-collective/studio dashboard for managing member profiles, and collector privacy settings.
+**Screens:** artwork page (public provenance timeline) ✅, profile page (trust-tier badge, claim
+status) ❌ **not built — no `/profiles/:id` route exists; every name mention is plain text, not
+a link**, claim flow (email/social verification) ✅, role-gated event-logging forms ✅ (for
+genesis/ownership_transfer/custody_change — not for exhibition, see below), a collective/studio
+dashboard for managing member profiles ✅, and collector privacy settings ❌ **not built — the
+private-by-default behavior exists in `createProfile`, but there's no settings UI for a
+collector to change it**.
 
 **Phased order:**
-- **Phase 0 — core product, no chain.** Profile/Artwork/Event CRUD, email/social claim flow,
-  role-gated event logging, public provenance timeline. Goal: prove the product before touching
-  Stellar at all.
-- **Phase 1 — Stellar anchoring.** Hash each Event and anchor it on Stellar testnet — nearly the
-  same submit/sign flow as the course payment dApp, storing a hash instead of moving XLM. This is
-  the concrete "why Stellar" proof point for a future proposal, worth pulling into the MVP rather
-  than deferring.
-- **Phase 2 — wallet-linking tier.** Artist pairs a Stellar keypair; new attestations get
-  actually signed. Plus collective/studio unclaimed-profile creation.
-- **Phase 3 — richer role workflows.** Exhibition corroboration tiers, royalty-commitment field
-  with artist notification on transfer, condition reports.
+- **Phase 0 — core product, no chain.** ✅ **Done.** Profile/Artwork/Event CRUD, email/social
+  claim flow, role-gated event logging, public provenance timeline, plus a good deal beyond the
+  original scope of this phase (multi-image support, editable dates, richer artwork fields,
+  print export, collaborators, the collective dashboard).
+- **Phase 1 — Stellar anchoring.** ❌ **Not started.** Hash each Event and anchor it on Stellar
+  testnet — nearly the same submit/sign flow as the course payment dApp, storing a hash instead
+  of moving XLM. This is the concrete "why Stellar" proof point for a future proposal, and is
+  currently the single biggest gap between the plan and what's built: the `on_chain_anchor_hash`
+  column exists on `events` but has never been populated. Given this project's premise is
+  eventually a Stellar proposal, this is worth prioritizing over further Phase 0/3 polish.
+- **Phase 2 — wallet-linking tier.** Not started (expected — depends on Phase 1). Artist pairs a
+  Stellar keypair; new attestations get actually signed.
+- **Phase 3 — richer role workflows.** Partially done: royalty-commitment field is
+  designed in this doc but was never actually added to the schema (a real gap, not just
+  deferred). Exhibition logging and condition reports are defined as event types but have no
+  logging UI — the Curator role currently has no functionality at all.
 - **Phase 4+** — everything below, already out of scope for the MVP.
 
 ## Explicitly Out of Scope for MVP (Phase 2+)
