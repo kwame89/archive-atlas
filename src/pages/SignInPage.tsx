@@ -35,7 +35,8 @@ export function SignInPage() {
 
   return (
     <div className="card">
-      <h1>Artist Archive & Provenance Platform</h1>
+      <h1>Archive Atlas</h1>
+      <p className="muted">Artist-first archival & provenance</p>
       <p className="muted">Sign in with your email — no password needed.</p>
       <form onSubmit={handleSubmit}>
         <label htmlFor="email">Email</label>

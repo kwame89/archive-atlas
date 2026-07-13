@@ -1,7 +1,8 @@
-# Artist Archive & Provenance Platform
+# Archive Atlas
 
-Early-stage build. See [SCOPE.md](./SCOPE.md) for the full design doc — vision, roles, the
-identity/trust-tier model, the event data model, and the phased build plan this repo follows.
+An artist-first archival & provenance platform. Early-stage build. See [SCOPE.md](./SCOPE.md)
+for the full design doc — vision, roles, the identity/trust-tier model, the event data model,
+and the phased build plan this repo follows.
 
 ## Stack
 
@@ -12,9 +13,12 @@ development connects to a hosted Supabase project.
 
 1. `npm install`
 2. Create a Supabase project (or use an existing one), then run the SQL in
-   `supabase/migrations/` against it (via the Supabase SQL editor or the Supabase CLI).
+   `supabase/migrations/` against it (via the Supabase SQL editor or the Supabase CLI), in order.
 3. Copy `.env.example` to `.env.local` and fill in your Supabase project URL and anon key.
-4. `npm run dev`
+4. Deploy `supabase/functions/anchor-event/` as a Supabase Edge Function and set the
+   `STELLAR_ANCHOR_SECRET` secret to a funded Stellar testnet secret key (optional — the app
+   works without it; events just won't be anchored on Stellar).
+5. `npm run dev`
 
 ## Project structure
 
@@ -28,6 +32,8 @@ supabase/migrations   SQL schema + RLS policies
 
 ## Where things stand
 
-Phase 0, slice 1: core schema and RLS policies for profiles, artworks, and the event audit trail
-(`supabase/migrations/0001_init_schema.sql`). No UI yet — see SCOPE.md's MVP Build Plan for what's
-next.
+Phase 0 (core product) is complete and verified: auth/claim flow, artwork records with images
+and rich detail fields, provenance timelines, ownership/custody transfer logging, collaborators,
+a collective dashboard for unclaimed profiles, and print/PDF export. Phase 1 (Stellar testnet
+anchoring of event hashes via the anchor-event Edge Function) is built and awaiting deployment.
+See SCOPE.md's MVP Build Plan for the full status breakdown.

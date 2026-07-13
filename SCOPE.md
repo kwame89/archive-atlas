@@ -1,6 +1,7 @@
-# Artist Archive & Provenance Platform — v0.1 Scope Draft
+# Archive Atlas — Scope & Design Doc
 
-_Working title. A living document — expect this to change as the idea develops._
+_Formerly "Artist Archive & Provenance Platform" (working title); branded Archive Atlas as of
+July 2026. A living document — expect this to change as the idea develops._
 
 ## Vision
 

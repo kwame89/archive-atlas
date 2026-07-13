@@ -356,6 +356,23 @@ export async function getArtwork(id: string): Promise<Artwork | null> {
   return data;
 }
 
+/** Primary image URL per artwork, for thumbnail lists — one query, not N. */
+export async function getPrimaryImageUrls(artworkIds: string[]): Promise<Record<string, string>> {
+  if (artworkIds.length === 0) return {};
+  const { data, error } = await supabase
+    .from("artwork_images")
+    .select("artwork_id, url")
+    .in("artwork_id", artworkIds)
+    .eq("is_primary", true);
+  if (error) throw error;
+
+  const map: Record<string, string> = {};
+  for (const row of data ?? []) {
+    map[row.artwork_id] = row.url;
+  }
+  return map;
+}
+
 export async function listArtworksByArtist(rootArtistId: string): Promise<Artwork[]> {
   const { data, error } = await supabase
     .from("artworks")
