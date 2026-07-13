@@ -8,6 +8,9 @@ export interface CreateArtworkInput {
   year?: number;
   editionNumber?: number;
   editionTotal?: number;
+  /** When the work was actually created, if different from today (e.g.
+   * archiving an older piece) — becomes the genesis event's occurred_at. */
+  dateCreated?: string;
 }
 
 /**
@@ -44,11 +47,28 @@ export async function createArtwork(
     actor_id: rootArtistId,
     artwork_id: artwork.id,
     to_party_id: rootArtistId,
+    occurred_at: input.dateCreated
+      ? new Date(input.dateCreated).toISOString()
+      : new Date().toISOString(),
   });
 
   if (eventError) throw eventError;
 
   return artwork;
+}
+
+/**
+ * Corrects a genesis event's recorded creation date. Treated as a metadata
+ * fix rather than a provenance-changing edit — it doesn't touch who created
+ * the work or that they did, only when.
+ */
+export async function updateGenesisDate(eventId: string, dateCreated: string): Promise<void> {
+  const { error } = await supabase
+    .from("events")
+    .update({ occurred_at: new Date(dateCreated).toISOString() })
+    .eq("id", eventId)
+    .eq("type", "genesis");
+  if (error) throw error;
 }
 
 export async function getArtworkImages(artworkId: string): Promise<ArtworkImage[]> {

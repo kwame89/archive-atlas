@@ -12,6 +12,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
   const [year, setYear] = useState("");
   const [editionNumber, setEditionNumber] = useState("");
   const [editionTotal, setEditionTotal] = useState("");
+  const [dateCreated, setDateCreated] = useState(() => new Date().toISOString().slice(0, 10));
   const [images, setImages] = useState<File[]>([]);
   const [primaryIndex, setPrimaryIndex] = useState(0);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -41,6 +42,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
         year: year ? Number(year) : undefined,
         editionNumber: editionNumber ? Number(editionNumber) : undefined,
         editionTotal: editionTotal ? Number(editionTotal) : undefined,
+        dateCreated: dateCreated || undefined,
       });
       if (images.length > 0) {
         // Artwork is already created at this point; an image upload failure
@@ -69,6 +71,18 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
       <form onSubmit={handleSubmit}>
         <label htmlFor="title">Title</label>
         <input id="title" required value={title} onChange={(e) => setTitle(e.target.value)} />
+
+        <label htmlFor="dateCreated">Date created</label>
+        <input
+          id="dateCreated"
+          type="date"
+          value={dateCreated}
+          onChange={(e) => setDateCreated(e.target.value)}
+        />
+        <p className="muted">
+          When the work was actually made — not necessarily today, if you're archiving older
+          work.
+        </p>
 
         <label htmlFor="images">Images</label>
         <input

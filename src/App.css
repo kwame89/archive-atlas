@@ -62,6 +62,30 @@
   margin-bottom: 16px;
 }
 
+.timeline button {
+  margin: 6px 8px 0 0;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+
+.edit-date-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.edit-date-row input {
+  padding: 6px 8px;
+  width: auto;
+}
+
+.edit-date-row button {
+  margin: 0;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+
 .section-heading {
   font-size: 1rem;
   margin: 24px 0 8px;

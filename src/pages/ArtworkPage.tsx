@@ -9,6 +9,7 @@ import {
   getProfileNames,
   isController,
   setPrimaryImage,
+  updateGenesisDate,
   uploadArtworkImages,
 } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
@@ -37,10 +38,18 @@ export function ArtworkPage() {
   const [error, setError] = useState("");
   const [imageActionError, setImageActionError] = useState("");
   const [addingImages, setAddingImages] = useState(false);
+  const [editingGenesisDate, setEditingGenesisDate] = useState(false);
+  const [genesisDateDraft, setGenesisDateDraft] = useState("");
+  const [genesisDateError, setGenesisDateError] = useState("");
 
   async function reloadImages() {
     if (!id) return;
     setImages(await getArtworkImages(id));
+  }
+
+  async function reloadEvents() {
+    if (!id) return;
+    setEvents(await getArtworkEvents(id));
   }
 
   useEffect(() => {
@@ -95,6 +104,23 @@ export function ArtworkPage() {
       setImageActionError(getErrorMessage(err));
     } finally {
       setAddingImages(false);
+    }
+  }
+
+  function startEditingGenesisDate(currentValue: string) {
+    setGenesisDateDraft(currentValue.slice(0, 10));
+    setGenesisDateError("");
+    setEditingGenesisDate(true);
+  }
+
+  async function handleSaveGenesisDate(eventId: string) {
+    setGenesisDateError("");
+    try {
+      await updateGenesisDate(eventId, genesisDateDraft);
+      await reloadEvents();
+      setEditingGenesisDate(false);
+    } catch (err) {
+      setGenesisDateError(getErrorMessage(err));
     }
   }
 
@@ -179,6 +205,38 @@ export function ArtworkPage() {
           <li key={event.id}>
             <strong>{EVENT_LABELS[event.type]}</strong>
             <span className="muted"> — {new Date(event.occurred_at).toLocaleDateString()}</span>
+            {event.type === "genesis" && canManage && (
+              <>
+                {!editingGenesisDate ? (
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => startEditingGenesisDate(event.occurred_at)}
+                  >
+                    Edit date
+                  </button>
+                ) : (
+                  <div className="edit-date-row">
+                    <input
+                      type="date"
+                      value={genesisDateDraft}
+                      onChange={(e) => setGenesisDateDraft(e.target.value)}
+                    />
+                    <button type="button" onClick={() => handleSaveGenesisDate(event.id)}>
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => setEditingGenesisDate(false)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+                {genesisDateError && <p className="error">{genesisDateError}</p>}
+              </>
+            )}
             {event.type === "genesis" && event.to_party_id && (
               <p className="muted">Owner and custodian: {names[event.to_party_id]}</p>
             )}
