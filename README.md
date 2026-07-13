@@ -35,5 +35,5 @@ supabase/migrations   SQL schema + RLS policies
 Phase 0 (core product) is complete and verified: auth/claim flow, artwork records with images
 and rich detail fields, provenance timelines, ownership/custody transfer logging, collaborators,
 a collective dashboard for unclaimed profiles, and print/PDF export. Phase 1 (Stellar testnet
-anchoring of event hashes via the anchor-event Edge Function) is built and awaiting deployment.
+anchoring of event hashes via the anchor-event Edge Function) is deployed and verified live.
 See SCOPE.md's MVP Build Plan for the full status breakdown.

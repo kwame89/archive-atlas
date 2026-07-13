@@ -103,9 +103,9 @@ transfers) — that stays with the root artist's controllers.
 an agent, e.g. a gallery), `artwork_id`, `target_profile_id` (used by `claim`), `from_party_id`/
 `to_party_id` (whose ownership/custody actually changed — may differ from actor), 
 `disputed_event_id`, `transaction_group_id` (links events fired together as one real-world
-transaction), `occurred_at`, `on_chain_anchor_hash` (column exists, never populated — Stellar
-anchoring hasn't been built yet, see MVP Build Plan below), `price`, `currency`, `notes`,
-`created_at`.
+transaction), `occurred_at`, `on_chain_anchor_hash` (the Stellar testnet transaction hash of
+this event's anchor — populated by the anchor-event Edge Function, see MVP Build Plan below),
+`price`, `currency`, `notes`, `created_at`.
 
 Event types defined in the `event_type` enum:
 - `genesis` — **implemented.** Artist/collective creates the canonical record for a new work.
@@ -263,12 +263,15 @@ collector to change it**.
   claim flow, role-gated event logging, public provenance timeline, plus a good deal beyond the
   original scope of this phase (multi-image support, editable dates, richer artwork fields,
   print export, collaborators, the collective dashboard).
-- **Phase 1 — Stellar anchoring.** ❌ **Not started.** Hash each Event and anchor it on Stellar
-  testnet — nearly the same submit/sign flow as the course payment dApp, storing a hash instead
-  of moving XLM. This is the concrete "why Stellar" proof point for a future proposal, and is
-  currently the single biggest gap between the plan and what's built: the `on_chain_anchor_hash`
-  column exists on `events` but has never been populated. Given this project's premise is
-  eventually a Stellar proposal, this is worth prioritizing over further Phase 0/3 polish.
+- **Phase 1 — Stellar anchoring.** ✅ **Done and verified live** (July 2026). The `anchor-event`
+  Supabase Edge Function hashes an event's canonical fields and anchors the hash on Stellar
+  testnet via a `manage_data` operation, signed by a platform-controlled testnet keypair (held
+  as an Edge Function secret, never client-side). The client fires it after every
+  genesis/transfer/custody/claim event creation — fire-and-forget, so anchoring failures never
+  block or undo the database record. Anchored events show a Stellar Expert link in the
+  provenance timeline. Note: platform-signed anchoring proves an event's content existed
+  unaltered at a point in time; it does not prove the artist personally signed it — that's
+  what Phase 2 wallet-linking adds.
 - **Phase 2 — wallet-linking tier.** Not started (expected — depends on Phase 1). Artist pairs a
   Stellar keypair; new attestations get actually signed.
 - **Phase 3 — richer role workflows.** Partially done: royalty-commitment field is
