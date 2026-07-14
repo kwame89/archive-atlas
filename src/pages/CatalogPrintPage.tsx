@@ -4,10 +4,15 @@ import { getArtworksByIds, getPrimaryImageUrls, getProfileNames } from "../lib/a
 import { getErrorMessage } from "../lib/errors";
 import type { Artwork } from "../types/database";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function CatalogPrintPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const ids = (searchParams.get("ids") ?? "").split(",").filter(Boolean);
+  // A malformed id (e.g. a hand-edited URL) shouldn't break the whole batch
+  // fetch with a raw Postgres "invalid input syntax for type uuid" error —
+  // just drop it, same as a well-formed but nonexistent id already is.
+  const ids = (searchParams.get("ids") ?? "").split(",").filter((id) => UUID_RE.test(id));
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [images, setImages] = useState<Record<string, string>>({});
   const [names, setNames] = useState<Record<string, string>>({});
