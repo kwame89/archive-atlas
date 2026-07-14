@@ -91,7 +91,7 @@ export async function createArtwork(
     .single();
 
   if (eventError) throw eventError;
-  anchorEvent(genesisEvent.id);
+  maybeAutoAnchor(genesisEvent.id, actorId, "genesis");
 
   if (input.collaboratorIds && input.collaboratorIds.length > 0) {
     await addCollaborators(artwork.id, input.collaboratorIds);
@@ -112,6 +112,35 @@ export function anchorEvent(eventId: string): void {
   supabase.functions.invoke("anchor-event", { body: { eventId } }).then(({ error }) => {
     if (error) console.warn(`Failed to anchor event ${eventId} on Stellar`, error);
   });
+}
+
+/** High-stakes event types that skip auto-anchoring for a wallet-linked
+ * actor, per SCOPE.md's Phase 2 friction decision — the artist signs these
+ * themselves via the "Sign & anchor with your wallet" button instead. */
+const WALLET_SIGNABLE_TYPES: ArtworkEvent["type"][] = ["genesis", "ownership_transfer"];
+
+/**
+ * Auto-anchors an event with the platform key, UNLESS its actor is
+ * wallet-linked and the event type is high-stakes — in that case it's left
+ * unanchored on purpose, so the artist can sign it themselves instead (see
+ * ArtworkPage's "Sign & anchor with your wallet" button). Fire-and-forget,
+ * same as anchorEvent — a failed profile lookup just falls back to the
+ * platform anchor rather than leaving the event unanchored forever.
+ */
+function maybeAutoAnchor(eventId: string, actorId: string, eventType: ArtworkEvent["type"]): void {
+  if (!WALLET_SIGNABLE_TYPES.includes(eventType)) {
+    anchorEvent(eventId);
+    return;
+  }
+  supabase
+    .from("profiles")
+    .select("trust_tier")
+    .eq("id", actorId)
+    .maybeSingle()
+    .then(({ data }) => {
+      if (data?.trust_tier === "wallet_linked") return;
+      anchorEvent(eventId);
+    });
 }
 
 export async function getArtworkCollaborators(artworkId: string): Promise<Profile[]> {
@@ -213,7 +242,7 @@ export async function transferOwnership(
     .select()
     .single();
   if (transferError) throw transferError;
-  anchorEvent(transferEvent.id);
+  maybeAutoAnchor(transferEvent.id, actorId, "ownership_transfer");
 
   const artworkUpdates: Partial<Artwork> = { current_owner_id: input.toPartyId };
 
