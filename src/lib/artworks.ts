@@ -542,6 +542,29 @@ export async function getArtworkEvents(artworkId: string): Promise<ArtworkEvent[
   return data ?? [];
 }
 
+export interface LoggedExhibition {
+  event: ArtworkEvent;
+  artworkTitle: string;
+}
+
+/** Every exhibition a profile has logged, across all artworks — the data
+ * behind the "My exhibitions" dashboard (curators log these but aren't
+ * restricted to a curator profile type, so this isn't type-gated either). */
+export async function getExhibitionsLoggedBy(actorId: string): Promise<LoggedExhibition[]> {
+  const { data, error } = await supabase
+    .from("events")
+    .select("*, artworks(title)")
+    .eq("type", "exhibition")
+    .eq("actor_id", actorId)
+    .order("occurred_at", { ascending: false });
+  if (error) throw error;
+
+  return (data ?? []).map((row) => {
+    const { artworks, ...event } = row as ArtworkEvent & { artworks: { title: string } | null };
+    return { event, artworkTitle: artworks?.title ?? "Untitled" };
+  });
+}
+
 /** Looks up display names for a set of profile ids, e.g. to label events. */
 export async function getProfileNames(ids: string[]): Promise<Record<string, string>> {
   const uniqueIds = [...new Set(ids)].filter(Boolean);

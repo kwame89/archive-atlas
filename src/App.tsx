@@ -10,6 +10,7 @@ import { ArtworkPage } from "./pages/ArtworkPage";
 import { ArtworkPrintPage } from "./pages/ArtworkPrintPage";
 import { CatalogPrintPage } from "./pages/CatalogPrintPage";
 import { CollectiveDashboardPage } from "./pages/CollectiveDashboardPage";
+import { MyExhibitionsPage } from "./pages/MyExhibitionsPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import type { Profile } from "./types/database";
 import "./App.css";
@@ -67,6 +68,12 @@ function App() {
             path="/collective"
             element={
               <RequireProfile>{(profile) => <CollectiveDashboardPage profile={profile} />}</RequireProfile>
+            }
+          />
+          <Route
+            path="/exhibitions"
+            element={
+              <RequireProfile>{(profile) => <MyExhibitionsPage profile={profile} />}</RequireProfile>
             }
           />
           <Route

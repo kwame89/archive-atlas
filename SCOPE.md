@@ -288,12 +288,13 @@ profile" checkbox in the profile edit form, backed by `updateProfile`'s `isPubli
   sequencing — wallet-linking only happens after claiming, so no UI was built for it. Anchored
   events now show "signed by artist" vs. platform-anchored in the timeline
   (`events.wallet_signed`).
-- **Phase 3 — richer role workflows.** Royalty-commitment field ✅, exhibition logging ✅
-  (self-logged + corroborated), and condition reports ✅ are all built. The Curator role beyond
-  exhibition logging still has no dedicated functionality. A multi-artwork catalog export
-  (`/catalog/print`) also shipped here, ahead of schedule — select any set of artworks from a
-  profile page and generate a printable/PDF checklist, same lightweight
-  print-CSS-not-a-PDF-service approach as the single-artwork print page.
+- **Phase 3 — richer role workflows.** ✅ **Done.** Royalty-commitment field, exhibition logging
+  (self-logged + corroborated), condition reports, and a "My exhibitions" dashboard (`/exhibitions`
+  — every exhibition a profile has logged, across all artworks, with corroboration status) are
+  all built. A multi-artwork catalog export (`/catalog/print`) also shipped here, ahead of
+  schedule — select any set of artworks from a profile page and generate a printable/PDF
+  checklist, same lightweight print-CSS-not-a-PDF-service approach as the single-artwork print
+  page. This closes out the MVP build plan — everything remaining is Phase 4+.
 - **Phase 4+** — everything below, already out of scope for the MVP.
 
 ## Explicitly Out of Scope for MVP (Phase 2+)

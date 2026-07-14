@@ -27,6 +27,9 @@ export function AppHeader({ profile }: { profile?: Profile | null }) {
           <button type="button" className="secondary" onClick={() => navigate("/collective")}>
             Collective
           </button>
+          <button type="button" className="secondary" onClick={() => navigate("/exhibitions")}>
+            My exhibitions
+          </button>
           <button type="button" className="secondary" onClick={() => supabase.auth.signOut()}>
             Sign out
           </button>
