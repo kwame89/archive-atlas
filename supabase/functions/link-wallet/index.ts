@@ -21,6 +21,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { Keypair } from "npm:@stellar/stellar-sdk@13";
+import { Buffer } from "node:buffer";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -43,12 +44,17 @@ function linkMessage(profileId: string, timestamp: string): string {
   return `Link Archive Atlas profile ${profileId} at ${timestamp}`;
 }
 
-async function sha256(bytes: Uint8Array): Promise<Uint8Array> {
-  return new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+// Keypair.verify() expects real Node Buffers, not plain Uint8Arrays — some
+// internal stellar-sdk/js-xdr code path calls Buffer-only methods on the
+// arguments (confirmed by a "signature.toJSON is not a function" crash when
+// passing a plain Uint8Array under Deno). Buffer also has native base64
+// decoding, so this sidesteps manual atob byte-mapping entirely.
+async function sha256(bytes: Uint8Array): Promise<Buffer> {
+  return Buffer.from(await crypto.subtle.digest("SHA-256", bytes));
 }
 
-function base64ToBytes(b64: string): Uint8Array {
-  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+function base64ToBuffer(b64: string): Buffer {
+  return Buffer.from(b64, "base64");
 }
 
 Deno.serve(async (req) => {
@@ -90,7 +96,7 @@ Deno.serve(async (req) => {
 
     let verified = false;
     try {
-      verified = Keypair.fromPublicKey(publicKey).verify(messageHash, base64ToBytes(signedMessage));
+      verified = Keypair.fromPublicKey(publicKey).verify(messageHash, base64ToBuffer(signedMessage));
     } catch {
       verified = false;
     }
