@@ -117,7 +117,9 @@ Event types defined in the `event_type` enum:
 - `exhibition` — **implemented.** Any signed-in profile can self-log a showing; the root artist's
   controllers can corroborate it (graduated trust, same pattern as claiming). Self-logging is
   deliberately open — see Resolved Design Decisions.
-- `condition_report` — **defined, not implemented.**
+- `condition_report` — **implemented.** Owner/custodian/root-artist controllers can log a rated
+  assessment; each report refreshes the artwork's denormalized `condition` cache, same pattern as
+  ownership_transfer updating `current_owner_id`.
 - `dispute` — **defined, not implemented.** Lower priority, deferred deliberately.
 - `succession` — **defined, not implemented.** Lower priority, deferred deliberately.
 
@@ -273,10 +275,12 @@ profile" checkbox in the profile edit form, backed by `updateProfile`'s `isPubli
   what Phase 2 wallet-linking adds.
 - **Phase 2 — wallet-linking tier.** Not started (expected — depends on Phase 1). Artist pairs a
   Stellar keypair; new attestations get actually signed.
-- **Phase 3 — richer role workflows.** Partially done: royalty-commitment field ✅ and exhibition
-  logging ✅ (self-logged + corroborated) are both built. Condition reports are still defined as
-  an event type with no logging UI, and the Curator role beyond exhibition logging has no
-  dedicated functionality yet.
+- **Phase 3 — richer role workflows.** Royalty-commitment field ✅, exhibition logging ✅
+  (self-logged + corroborated), and condition reports ✅ are all built. The Curator role beyond
+  exhibition logging still has no dedicated functionality. A multi-artwork catalog export
+  (`/catalog/print`) also shipped here, ahead of schedule — select any set of artworks from a
+  profile page and generate a printable/PDF checklist, same lightweight
+  print-CSS-not-a-PDF-service approach as the single-artwork print page.
 - **Phase 4+** — everything below, already out of scope for the MVP.
 
 ## Explicitly Out of Scope for MVP (Phase 2+)

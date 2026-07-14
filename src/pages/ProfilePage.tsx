@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../lib/AuthProvider";
 import {
   canActFor,
@@ -22,6 +22,7 @@ const TIER_LABELS: Record<Profile["trust_tier"], string> = {
 
 export function ProfilePage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { session } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [myProfile, setMyProfile] = useState<Profile | null>(null);
@@ -40,6 +41,8 @@ export function ProfilePage() {
   const [editError, setEditError] = useState("");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingCv, setUploadingCv] = useState(false);
+  const [selectingForCatalog, setSelectingForCatalog] = useState(false);
+  const [selectedForCatalog, setSelectedForCatalog] = useState<string[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -98,6 +101,26 @@ export function ProfilePage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function toggleCatalogSelection(artworkId: string) {
+    setSelectedForCatalog((prev) =>
+      prev.includes(artworkId) ? prev.filter((id) => id !== artworkId) : [...prev, artworkId]
+    );
+  }
+
+  function startCatalogSelection() {
+    setSelectedForCatalog([]);
+    setSelectingForCatalog(true);
+  }
+
+  function cancelCatalogSelection() {
+    setSelectingForCatalog(false);
+    setSelectedForCatalog([]);
+  }
+
+  function handleGenerateCatalog() {
+    navigate(`/catalog/print?ids=${selectedForCatalog.join(",")}`);
   }
 
   async function handleUpload(file: File | undefined, kind: "avatar" | "cv") {
@@ -253,24 +276,67 @@ export function ProfilePage() {
         </form>
       )}
 
-      <h2 className="section-heading">Artworks</h2>
+      <div className="artworks-header">
+        <h2 className="section-heading">Artworks</h2>
+        {canEdit && artworks.length > 0 && !selectingForCatalog && (
+          <button type="button" className="secondary" onClick={startCatalogSelection}>
+            Select for catalog
+          </button>
+        )}
+        {selectingForCatalog && (
+          <div className="catalog-selection-bar">
+            <button
+              type="button"
+              disabled={selectedForCatalog.length === 0}
+              onClick={handleGenerateCatalog}
+            >
+              Generate catalog ({selectedForCatalog.length})
+            </button>
+            <button type="button" className="secondary" onClick={cancelCatalogSelection}>
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
       {artworks.length === 0 && <p className="muted">No artworks yet.</p>}
       <ul className="artwork-grid">
-        {artworks.map((artwork) => (
-          <li key={artwork.id}>
-            <Link to={`/artworks/${artwork.id}`}>
-              {thumbnails[artwork.id] ? (
-                <img src={thumbnails[artwork.id]} alt={artwork.title} />
-              ) : (
-                <div className="thumb-placeholder" aria-hidden="true" />
-              )}
+        {artworks.map((artwork) => {
+          const thumb = thumbnails[artwork.id] ? (
+            <img src={thumbnails[artwork.id]} alt={artwork.title} />
+          ) : (
+            <div className="thumb-placeholder" aria-hidden="true" />
+          );
+          const caption = (
+            <>
               <span>{artwork.title}</span>
               <span className="muted">
                 {[artwork.medium, artwork.year].filter(Boolean).join(" · ")}
               </span>
-            </Link>
-          </li>
-        ))}
+            </>
+          );
+
+          return (
+            <li key={artwork.id}>
+              {selectingForCatalog ? (
+                <button
+                  type="button"
+                  className={`artwork-tile-select${
+                    selectedForCatalog.includes(artwork.id) ? " selected" : ""
+                  }`}
+                  onClick={() => toggleCatalogSelection(artwork.id)}
+                >
+                  {thumb}
+                  {caption}
+                </button>
+              ) : (
+                <Link to={`/artworks/${artwork.id}`}>
+                  {thumb}
+                  {caption}
+                </Link>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

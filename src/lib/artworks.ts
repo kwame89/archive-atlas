@@ -327,6 +327,46 @@ export async function corroborateExhibition(
   if (error) throw error;
 }
 
+export interface LogConditionReportInput {
+  artworkId: string;
+  rating: string;
+  notes?: string;
+  reportDate?: string;
+}
+
+/**
+ * Logs a condition_report event and refreshes the artwork's denormalized
+ * `condition` cache to the new rating — same pattern as ownership_transfer
+ * updating current_owner_id. `actorId` is whoever assessed it; the RLS check
+ * on artworks_update (root artist, owner, or custodian controllers) is what
+ * actually gates who can do this, matched by the ArtworkPage UI.
+ */
+export async function logConditionReport(
+  actorId: string,
+  input: LogConditionReportInput
+): Promise<void> {
+  const { data: event, error } = await supabase
+    .from("events")
+    .insert({
+      type: "condition_report",
+      actor_id: actorId,
+      artwork_id: input.artworkId,
+      occurred_at: input.reportDate ? new Date(input.reportDate).toISOString() : new Date().toISOString(),
+      condition_rating: input.rating,
+      notes: input.notes || null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  anchorEvent(event.id);
+
+  const { error: updateError } = await supabase
+    .from("artworks")
+    .update({ condition: input.rating })
+    .eq("id", input.artworkId);
+  if (updateError) throw updateError;
+}
+
 export async function getArtworkImages(artworkId: string): Promise<ArtworkImage[]> {
   const { data, error } = await supabase
     .from("artwork_images")
@@ -426,6 +466,14 @@ export async function getArtwork(id: string): Promise<Artwork | null> {
   const { data, error } = await supabase.from("artworks").select("*").eq("id", id).maybeSingle();
   if (error) throw error;
   return data;
+}
+
+/** Batch artwork fetch by id, for multi-artwork views like the catalog print page. */
+export async function getArtworksByIds(ids: string[]): Promise<Artwork[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase.from("artworks").select("*").in("id", ids);
+  if (error) throw error;
+  return data ?? [];
 }
 
 /** Primary image URL per artwork, for thumbnail lists — one query, not N. */

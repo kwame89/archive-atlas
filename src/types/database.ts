@@ -105,6 +105,7 @@ export interface ArtworkEvent {
   exhibition_end_date: string | null;
   corroborated_by: string | null;
   corroborated_at: string | null;
+  condition_rating: string | null;
   created_at: string;
 }
 

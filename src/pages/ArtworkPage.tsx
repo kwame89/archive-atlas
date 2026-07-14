@@ -21,6 +21,7 @@ import {
 import { getErrorMessage } from "../lib/errors";
 import { TransferForm } from "../components/TransferForm";
 import { ExhibitionForm } from "../components/ExhibitionForm";
+import { ConditionReportForm } from "../components/ConditionReportForm";
 import { ProfileSearchAdd } from "../components/ProfileSearchAdd";
 import type { Artwork, ArtworkEvent, ArtworkImage, Profile } from "../types/database";
 
@@ -559,6 +560,12 @@ export function ArtworkPage() {
                 </p>
               </>
             )}
+            {event.type === "condition_report" && (
+              <p className="muted">
+                <span className="tier-badge">{event.condition_rating}</span>
+                {` · assessed by ${names[event.actor_id] ?? "Unknown"}`}
+              </p>
+            )}
             {event.notes && <p className="muted">{event.notes}</p>}
             {event.on_chain_anchor_hash && (
               <p className="muted">
@@ -583,6 +590,17 @@ export function ArtworkPage() {
             actorProfileId={myProfileId}
             controlsOwner={controlsOwner}
             controlsCustodian={controlsCustodian}
+            onComplete={loadAll}
+          />
+        </>
+      )}
+
+      {(controlsOwner || controlsCustodian || canManage) && myProfileId && (
+        <>
+          <h2 className="section-heading">Condition</h2>
+          <ConditionReportForm
+            artworkId={artwork.id}
+            actorProfileId={myProfileId}
             onComplete={loadAll}
           />
         </>
