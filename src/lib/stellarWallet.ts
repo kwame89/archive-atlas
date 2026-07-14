@@ -25,6 +25,27 @@ async function connectFreighter(): Promise<string> {
 }
 
 /**
+ * supabase.functions.invoke() wraps any non-2xx response in a generic
+ * FunctionsHttpError without surfacing the actual JSON body the function
+ * sent back — the real error message is on error.context, the raw Response.
+ * Without this, every rejection from link-wallet/anchor-event (bad
+ * signature, unauthorized, stale timestamp, etc.) shows up client-side as
+ * the meaningless "Edge Function returned a non-2xx status code".
+ */
+async function unwrapFunctionError(error: unknown): Promise<string> {
+  const context = (error as { context?: unknown } | null)?.context;
+  if (context instanceof Response) {
+    try {
+      const body = await context.clone().json();
+      if (body?.error) return body.error;
+    } catch {
+      // fall through to the generic message below
+    }
+  }
+  return error instanceof Error ? error.message : "Request failed";
+}
+
+/**
  * Links a Stellar wallet to a profile. Proves key ownership via an
  * off-chain SEP-53 message signature (no transaction, no funding needed) —
  * see the link-wallet Edge Function for the server-side verification, which
@@ -42,7 +63,7 @@ export async function linkWallet(profileId: string): Promise<string> {
   const { data, error: fnError } = await supabase.functions.invoke("link-wallet", {
     body: { profileId, publicKey, timestamp, signedMessage },
   });
-  if (fnError) throw new Error(fnError.message ?? "Failed to verify wallet");
+  if (fnError) throw new Error(await unwrapFunctionError(fnError));
   if (data?.error) throw new Error(data.error);
 
   return publicKey;
@@ -142,7 +163,7 @@ export async function signAndAnchorEvent(
   const { data, error: fnError } = await supabase.functions.invoke("anchor-event", {
     body: { eventId: event.id, txHash: result.hash },
   });
-  if (fnError) throw new Error(fnError.message ?? "Failed to verify the anchor");
+  if (fnError) throw new Error(await unwrapFunctionError(fnError));
   if (data?.error) throw new Error(data.error);
 
   return result.hash;
