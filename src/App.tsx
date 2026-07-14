@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/AuthProvider";
 import { getMyProfile } from "./lib/profiles";
 import { SignInPage } from "./pages/SignInPage";
+import { LandingPage } from "./pages/LandingPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { HomePage } from "./pages/HomePage";
 import { CreateArtworkPage } from "./pages/CreateArtworkPage";
@@ -15,7 +16,13 @@ import { ProfilePage } from "./pages/ProfilePage";
 import type { Profile } from "./types/database";
 import "./App.css";
 
-function RequireProfile({ children }: { children: (profile: Profile) => ReactNode }) {
+function RequireProfile({
+  children,
+  loggedOutFallback = <SignInPage />,
+}: {
+  children: (profile: Profile) => ReactNode;
+  loggedOutFallback?: ReactNode;
+}) {
   const { session, loading } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -41,7 +48,7 @@ function RequireProfile({ children }: { children: (profile: Profile) => ReactNod
   }
 
   if (!session) {
-    return <SignInPage />;
+    return <>{loggedOutFallback}</>;
   }
 
   if (!profile) {
@@ -78,7 +85,11 @@ function App() {
           />
           <Route
             path="/"
-            element={<RequireProfile>{(profile) => <HomePage profile={profile} />}</RequireProfile>}
+            element={
+              <RequireProfile loggedOutFallback={<LandingPage />}>
+                {(profile) => <HomePage profile={profile} />}
+              </RequireProfile>
+            }
           />
         </Routes>
       </BrowserRouter>

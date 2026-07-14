@@ -23,6 +23,53 @@
   max-width: 1200px;
 }
 
+.landing-hero {
+  text-align: center;
+  margin-top: 32px;
+}
+
+.landing-hero h1 {
+  font-size: 2.4rem;
+  margin-bottom: 8px;
+}
+
+.landing-hero p {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.landing-intro {
+  max-width: 640px;
+  margin: 24px auto;
+  text-align: center;
+}
+
+.landing-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 24px;
+  margin: 32px 0;
+}
+
+.landing-features .section-heading {
+  margin-top: 0;
+}
+
+.landing-cta {
+  display: flex;
+  justify-content: center;
+}
+
+.landing-cta .card {
+  margin-top: 16px;
+}
+
+.landing-footnote {
+  text-align: center;
+  margin-top: 16px;
+  margin-bottom: 32px;
+}
+
 .app-header {
   display: flex;
   align-items: center;
