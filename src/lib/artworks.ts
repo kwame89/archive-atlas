@@ -255,6 +255,58 @@ export async function changeCustody(
   if (updateError) throw updateError;
 }
 
+export interface LogExhibitionInput {
+  artworkId: string;
+  title: string;
+  venue?: string;
+  location?: string;
+  startDate: string;
+  endDate?: string;
+  notes?: string;
+}
+
+/**
+ * Logs an exhibition event — a showing of an artwork, which does not change
+ * ownership or custody. Any signed-in profile can log one (the "self-logged"
+ * tier); the artwork's root artist can corroborate it later to raise its
+ * trust. `actorId` is who logged it, recorded for attribution.
+ */
+export async function logExhibition(actorId: string, input: LogExhibitionInput): Promise<void> {
+  const { data: event, error } = await supabase
+    .from("events")
+    .insert({
+      type: "exhibition",
+      actor_id: actorId,
+      artwork_id: input.artworkId,
+      occurred_at: new Date(input.startDate).toISOString(),
+      exhibition_title: input.title,
+      exhibition_venue: input.venue || null,
+      exhibition_location: input.location || null,
+      exhibition_end_date: input.endDate ? new Date(input.endDate).toISOString() : null,
+      notes: input.notes || null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  anchorEvent(event.id);
+}
+
+/** Marks a self-logged exhibition as corroborated by the artwork's artist. */
+export async function corroborateExhibition(
+  eventId: string,
+  corroboratorProfileId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("events")
+    .update({
+      corroborated_by: corroboratorProfileId,
+      corroborated_at: new Date().toISOString(),
+    })
+    .eq("id", eventId)
+    .eq("type", "exhibition");
+  if (error) throw error;
+}
+
 export async function getArtworkImages(artworkId: string): Promise<ArtworkImage[]> {
   const { data, error } = await supabase
     .from("artwork_images")

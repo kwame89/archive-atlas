@@ -98,6 +98,12 @@ export interface ArtworkEvent {
   price: number | null;
   currency: string | null;
   notes: string | null;
+  exhibition_title: string | null;
+  exhibition_venue: string | null;
+  exhibition_location: string | null;
+  exhibition_end_date: string | null;
+  corroborated_by: string | null;
+  corroborated_at: string | null;
   created_at: string;
 }
 

@@ -4,6 +4,7 @@ import { useAuth } from "../lib/AuthProvider";
 import { getMyProfile, canActFor } from "../lib/profiles";
 import {
   addCollaborators,
+  corroborateExhibition,
   getArtwork,
   getArtworkCollaborators,
   getArtworkEvents,
@@ -18,6 +19,7 @@ import {
 } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
 import { TransferForm } from "../components/TransferForm";
+import { ExhibitionForm } from "../components/ExhibitionForm";
 import { ProfileSearchAdd } from "../components/ProfileSearchAdd";
 import type { Artwork, ArtworkEvent, ArtworkImage, Profile } from "../types/database";
 
@@ -149,6 +151,16 @@ export function ArtworkPage() {
       setImageActionError(getErrorMessage(err));
     } finally {
       setAddingImages(false);
+    }
+  }
+
+  async function handleCorroborate(eventId: string) {
+    if (!myProfileId) return;
+    try {
+      await corroborateExhibition(eventId, myProfileId);
+      await reloadEvents();
+    } catch (err) {
+      setError(getErrorMessage(err));
     }
   }
 
@@ -446,6 +458,40 @@ export function ArtworkPage() {
                 {names[event.to_party_id ?? ""] ?? "Unknown"}
               </p>
             )}
+            {event.type === "exhibition" && (
+              <>
+                <p>
+                  <strong>{event.exhibition_title}</strong>
+                  {event.exhibition_venue && ` · ${event.exhibition_venue}`}
+                  {event.exhibition_location && ` · ${event.exhibition_location}`}
+                </p>
+                {event.exhibition_end_date && (
+                  <p className="muted">
+                    Through {new Date(event.exhibition_end_date).toLocaleDateString()}
+                  </p>
+                )}
+                <p className="muted">
+                  {event.corroborated_by ? (
+                    <span className="tier-badge">
+                      Corroborated by {names[event.corroborated_by] ?? "the artist"}
+                    </span>
+                  ) : (
+                    <>
+                      <span className="muted">Self-logged by {names[event.actor_id] ?? "Unknown"}</span>
+                      {canManage && (
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => handleCorroborate(event.id)}
+                        >
+                          Corroborate
+                        </button>
+                      )}
+                    </>
+                  )}
+                </p>
+              </>
+            )}
             {event.notes && <p className="muted">{event.notes}</p>}
             {event.on_chain_anchor_hash && (
               <p className="muted">
@@ -472,6 +518,13 @@ export function ArtworkPage() {
             controlsCustodian={controlsCustodian}
             onComplete={loadAll}
           />
+        </>
+      )}
+
+      {myProfileId && (
+        <>
+          <h2 className="section-heading">Exhibitions</h2>
+          <ExhibitionForm artworkId={artwork.id} actorProfileId={myProfileId} onComplete={loadAll} />
         </>
       )}
 
