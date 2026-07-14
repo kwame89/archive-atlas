@@ -20,6 +20,8 @@ export interface CreateArtworkInput {
   isSigned?: boolean;
   signatureNotes?: string;
   condition?: string;
+  /** Suggested resale royalty (%), unenforced — see updateRoyaltyPercentage. */
+  royaltyPercentage?: number;
   /** When the work was actually created, if different from today (e.g.
    * archiving an older piece) — becomes the genesis event's occurred_at. */
   dateCreated?: string;
@@ -64,6 +66,7 @@ export async function createArtwork(
       is_signed: input.isSigned ?? false,
       signature_notes: input.signatureNotes || null,
       condition: input.condition || null,
+      royalty_percentage: input.royaltyPercentage ?? null,
       root_artist_id: rootArtistId,
       current_owner_id: rootArtistId,
       current_custodian_id: rootArtistId,
@@ -147,6 +150,23 @@ export async function updateGenesisDate(eventId: string, dateCreated: string): P
     .update({ occurred_at: new Date(dateCreated).toISOString() })
     .eq("id", eventId)
     .eq("type", "genesis");
+  if (error) throw error;
+}
+
+/**
+ * Sets the artist's suggested resale royalty for this piece. Unenforced —
+ * SCOPE.md's "royalty commitment": a stated expectation that surfaces on the
+ * artwork's public page and in its provenance record, not a mechanism that
+ * collects anything today. Pass null to clear it.
+ */
+export async function updateRoyaltyPercentage(
+  artworkId: string,
+  royaltyPercentage: number | null
+): Promise<void> {
+  const { error } = await supabase
+    .from("artworks")
+    .update({ royalty_percentage: royaltyPercentage })
+    .eq("id", artworkId);
   if (error) throw error;
 }
 

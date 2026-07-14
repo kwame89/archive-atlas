@@ -32,6 +32,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
   const [isSigned, setIsSigned] = useState(false);
   const [signatureNotes, setSignatureNotes] = useState("");
   const [condition, setCondition] = useState("");
+  const [royaltyPercentage, setRoyaltyPercentage] = useState("");
   const [collaborators, setCollaborators] = useState<Profile[]>([]);
   const [privateNotes, setPrivateNotes] = useState("");
   const [dateCreated, setDateCreated] = useState(() => new Date().toISOString().slice(0, 10));
@@ -91,6 +92,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
           isSigned,
           signatureNotes: signatureNotes || undefined,
           condition: condition || undefined,
+          royaltyPercentage: royaltyPercentage ? Number(royaltyPercentage) : undefined,
           dateCreated: dateCreated || undefined,
           collaboratorIds: collaborators.map((c) => c.id),
         },
@@ -288,6 +290,23 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
             </option>
           ))}
         </select>
+
+        <label htmlFor="royaltyPercentage">Suggested resale royalty (%)</label>
+        <input
+          id="royaltyPercentage"
+          type="number"
+          min="0"
+          max="100"
+          step="0.1"
+          value={royaltyPercentage}
+          onChange={(e) => setRoyaltyPercentage(e.target.value)}
+          placeholder="e.g. 5"
+        />
+        <p className="muted">
+          Optional. A resale royalty you'd like collectors to honor when this piece changes hands
+          again — not enforced or collected by the platform yet, but recorded on the piece and
+          visible in its provenance.
+        </p>
 
         <h2 className="section-heading">Date & edition</h2>
 

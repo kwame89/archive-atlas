@@ -15,6 +15,7 @@ import {
   saveArtworkPrivateNotes,
   setPrimaryImage,
   updateGenesisDate,
+  updateRoyaltyPercentage,
   uploadArtworkImages,
 } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
@@ -59,6 +60,10 @@ export function ArtworkPage() {
   const [privateNotesDraft, setPrivateNotesDraft] = useState("");
   const [privateNotesError, setPrivateNotesError] = useState("");
   const [savingPrivateNotes, setSavingPrivateNotes] = useState(false);
+  const [editingRoyalty, setEditingRoyalty] = useState(false);
+  const [royaltyDraft, setRoyaltyDraft] = useState("");
+  const [royaltyError, setRoyaltyError] = useState("");
+  const [savingRoyalty, setSavingRoyalty] = useState(false);
 
   async function reloadImages() {
     if (!id) return;
@@ -200,6 +205,28 @@ export function ArtworkPage() {
       setEditingGenesisDate(false);
     } catch (err) {
       setGenesisDateError(getErrorMessage(err));
+    }
+  }
+
+  function startEditingRoyalty() {
+    setRoyaltyDraft(artwork?.royalty_percentage != null ? String(artwork.royalty_percentage) : "");
+    setRoyaltyError("");
+    setEditingRoyalty(true);
+  }
+
+  async function handleSaveRoyalty() {
+    if (!id) return;
+    setSavingRoyalty(true);
+    setRoyaltyError("");
+    try {
+      const value = royaltyDraft.trim() ? Number(royaltyDraft) : null;
+      await updateRoyaltyPercentage(id, value);
+      setArtwork((prev) => (prev ? { ...prev, royalty_percentage: value } : prev));
+      setEditingRoyalty(false);
+    } catch (err) {
+      setRoyaltyError(getErrorMessage(err));
+    } finally {
+      setSavingRoyalty(false);
     }
   }
 
@@ -399,6 +426,46 @@ export function ArtworkPage() {
             .filter(Boolean)
             .join(" · ")}
         </p>
+      )}
+
+      {(artwork.royalty_percentage != null || canManage) && (
+        <div className="royalty-commitment">
+          {!editingRoyalty ? (
+            <p className="muted">
+              {artwork.royalty_percentage != null
+                ? `Suggested resale royalty: ${artwork.royalty_percentage}% (not enforced or collected by the platform)`
+                : "No resale royalty commitment recorded"}{" "}
+              {canManage && (
+                <button type="button" className="secondary" onClick={startEditingRoyalty}>
+                  Edit
+                </button>
+              )}
+            </p>
+          ) : (
+            <div className="edit-date-row">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={royaltyDraft}
+                onChange={(e) => setRoyaltyDraft(e.target.value)}
+                placeholder="e.g. 5"
+              />
+              <button type="button" disabled={savingRoyalty} onClick={handleSaveRoyalty}>
+                Save
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setEditingRoyalty(false)}
+              >
+                Cancel
+              </button>
+              {royaltyError && <p className="error">{royaltyError}</p>}
+            </div>
+          )}
+        </div>
       )}
 
       <h2 className="section-heading">Provenance</h2>

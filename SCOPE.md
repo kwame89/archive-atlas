@@ -114,8 +114,9 @@ Event types defined in the `event_type` enum:
 - `custody_change` — **implemented.** Physical possession changes, ownership does not (loan,
   consignment).
 - `claim` — **implemented.** Profile claimed by its rightful artist.
-- `exhibition` — **defined, not implemented.** No logging UI or function exists yet; the Curator
-  role currently has no actual functionality.
+- `exhibition` — **implemented.** Any signed-in profile can self-log a showing; the root artist's
+  controllers can corroborate it (graduated trust, same pattern as claiming). Self-logging is
+  deliberately open — see Resolved Design Decisions.
 - `condition_report` — **defined, not implemented.**
 - `dispute` — **defined, not implemented.** Lower priority, deferred deliberately.
 - `succession` — **defined, not implemented.** Lower priority, deferred deliberately.
@@ -207,13 +208,13 @@ changes — nothing needs to be migrated or reattributed. The prior event alread
 claimed was wrong or fabricated, they log a `dispute` against it (see Event types, above)
 rather than the record being silently rewritten.
 
-**Royalty commitment** (optional, attached to an artwork or transfer) — a suggested resale
-royalty percentage, unenforced in the MVP. This is the seed for enforceable artist resale
-royalties once a payment/settlement layer exists in Phase 2 — a real, largely unsolved gap in
-the US art market (droit de suite barely exists here and is poorly enforced even in
-jurisdictions that have it). **Status: designed, never implemented** — no field for this exists
-anywhere in the actual schema. Worth picking back up; it's a small addition (one nullable numeric
-column on `artworks` or `events`) with real relevance to the mission.
+**Royalty commitment** (attached to the artwork) — a suggested resale royalty percentage,
+unenforced in the MVP. This is the seed for enforceable artist resale royalties once a
+payment/settlement layer exists in Phase 2 — a real, largely unsolved gap in the US art market
+(droit de suite barely exists here and is poorly enforced even in jurisdictions that have it).
+**Status: implemented.** `artworks.royalty_percentage` (nullable numeric), settable at creation
+or edited later by the root artist's controllers, displayed on the public artwork page. Purely
+informational today — no payment or collection mechanism exists yet.
 
 ## Where Stellar Fits (MVP)
 
@@ -251,9 +252,8 @@ provenance and the art market actually function:
 ## MVP Build Plan
 
 **Screens:** artwork page (public provenance timeline) ✅, profile page (trust-tier badge, claim
-status) ❌ **not built — no `/profiles/:id` route exists; every name mention is plain text, not
-a link**, claim flow (email/social verification) ✅, role-gated event-logging forms ✅ (for
-genesis/ownership_transfer/custody_change — not for exhibition, see below), a collective/studio
+status, bio/website/CV, avatar) ✅, claim flow (email/social verification) ✅, role-gated
+event-logging forms ✅ (genesis/ownership_transfer/custody_change/exhibition), a collective/studio
 dashboard for managing member profiles ✅, and collector privacy settings ❌ **not built — the
 private-by-default behavior exists in `createProfile`, but there's no settings UI for a
 collector to change it**.
@@ -274,10 +274,10 @@ collector to change it**.
   what Phase 2 wallet-linking adds.
 - **Phase 2 — wallet-linking tier.** Not started (expected — depends on Phase 1). Artist pairs a
   Stellar keypair; new attestations get actually signed.
-- **Phase 3 — richer role workflows.** Partially done: royalty-commitment field is
-  designed in this doc but was never actually added to the schema (a real gap, not just
-  deferred). Exhibition logging and condition reports are defined as event types but have no
-  logging UI — the Curator role currently has no functionality at all.
+- **Phase 3 — richer role workflows.** Partially done: royalty-commitment field ✅ and exhibition
+  logging ✅ (self-logged + corroborated) are both built. Condition reports are still defined as
+  an event type with no logging UI, and the Curator role beyond exhibition logging has no
+  dedicated functionality yet.
 - **Phase 4+** — everything below, already out of scope for the MVP.
 
 ## Explicitly Out of Scope for MVP (Phase 2+)
