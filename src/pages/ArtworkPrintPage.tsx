@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { getArtwork, getArtworkImages, getProfileNames } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
 import type { Artwork, ArtworkImage } from "../types/database";
@@ -48,6 +48,9 @@ export function ArtworkPrintPage() {
 
   return (
     <div className="print-page">
+      <p className="no-print">
+        <Link to={`/artworks/${artwork.id}`}>← Back to artwork</Link>
+      </p>
       <button type="button" className="no-print print-button" onClick={() => window.print()}>
         Print
       </button>

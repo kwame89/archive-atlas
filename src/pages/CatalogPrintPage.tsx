@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getArtworksByIds, getPrimaryImageUrls, getProfileNames } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
 import type { Artwork } from "../types/database";
 
 export function CatalogPrintPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const ids = (searchParams.get("ids") ?? "").split(",").filter(Boolean);
   const [artworks, setArtworks] = useState<Artwork[]>([]);
@@ -37,12 +38,41 @@ export function CatalogPrintPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams.get("ids")]);
 
-  if (loading) return <p className="muted">Loading…</p>;
-  if (error) return <p className="error">{error}</p>;
-  if (artworks.length === 0) return <p className="muted">No artworks selected.</p>;
+  const backLink = (
+    <p className="no-print">
+      <button type="button" className="link-back" onClick={() => navigate(-1)}>
+        ← Back
+      </button>
+      {" · "}
+      <Link to="/">Home</Link>
+    </p>
+  );
+
+  if (loading)
+    return (
+      <div className="print-page catalog-page">
+        {backLink}
+        <p className="muted">Loading…</p>
+      </div>
+    );
+  if (error)
+    return (
+      <div className="print-page catalog-page">
+        {backLink}
+        <p className="error">{error}</p>
+      </div>
+    );
+  if (artworks.length === 0)
+    return (
+      <div className="print-page catalog-page">
+        {backLink}
+        <p className="muted">No artworks selected.</p>
+      </div>
+    );
 
   return (
     <div className="print-page catalog-page">
+      {backLink}
       <button type="button" className="no-print print-button" onClick={() => window.print()}>
         Print
       </button>
