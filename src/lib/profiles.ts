@@ -109,8 +109,16 @@ export async function updateProfile(profileId: string, input: UpdateProfileInput
     .update(updates)
     .eq("id", profileId)
     .select()
-    .single();
+    .maybeSingle();
   if (error) throw error;
+  // .single() would throw an opaque "Cannot coerce the result to a single
+  // JSON object" if RLS silently matched zero rows (e.g. an expired
+  // session) — .maybeSingle() lets us say what actually happened instead.
+  if (!data) {
+    throw new Error(
+      "Couldn't save changes — you may not have permission, or your session may have expired. Try signing in again."
+    );
+  }
   return data;
 }
 
@@ -247,9 +255,14 @@ export async function claimProfile(authUserId: string, profileId: string): Promi
     .eq("trust_tier", "unclaimed")
     .is("auth_user_id", null)
     .select()
-    .single();
+    .maybeSingle();
 
   if (updateError) throw updateError;
+  // Zero rows matched means the where-clause conditions failed, not just
+  // "not found" — most likely someone else already claimed this profile.
+  if (!profile) {
+    throw new Error("This profile has already been claimed, or no longer exists.");
+  }
 
   const { error: controllerError } = await supabase
     .from("profile_controllers")
