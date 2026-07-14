@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: "Actor has no linked wallet" }, 400);
       }
 
-      const txRecord = await server.transactions().transaction(txHash);
+      const txRecord = await server.transactions().transaction(txHash).call();
       if (!txRecord.successful) {
         return jsonResponse({ error: "Transaction was not successful on-chain" }, 400);
       }
