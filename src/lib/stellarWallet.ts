@@ -7,6 +7,7 @@ import {
 } from "@stellar/stellar-sdk";
 import { isConnected, requestAccess, signMessage, signTransaction } from "@stellar/freighter-api";
 import { supabase } from "./supabaseClient";
+import { getErrorMessage } from "./errors";
 
 const HORIZON_URL = "https://horizon-testnet.stellar.org";
 const NETWORK_PASSPHRASE = Networks.TESTNET;
@@ -158,7 +159,30 @@ export async function signAndAnchorEvent(
   if (!signedTxXdr) throw new Error("Freighter did not return a signed transaction");
 
   const signedTx = TransactionBuilder.fromXDR(signedTxXdr, NETWORK_PASSPHRASE);
-  const result = await server.submitTransaction(signedTx);
+
+  let result;
+  try {
+    result = await server.submitTransaction(signedTx);
+  } catch (submitErr) {
+    // Horizon rejects some failures (bad sequence, can't cover the fee, etc.)
+    // before the transaction ever lands in a ledger — stellar-sdk throws for
+    // these, with the actual reason in the response body's extras, not in
+    // the exception's own message.
+    const resultCodes = (submitErr as { response?: { data?: { extras?: { result_codes?: unknown } } } })
+      ?.response?.data?.extras?.result_codes;
+    const reason = resultCodes ? JSON.stringify(resultCodes) : getErrorMessage(submitErr);
+    throw new Error(`Transaction rejected before reaching the ledger: ${reason}`);
+  }
+
+  if (!result.successful) {
+    // Unlike a rejection above, this transaction WAS included in a ledger —
+    // it consumed the sequence number and fee, but the operation itself
+    // failed. stellar-sdk doesn't throw for this case. Point at Stellar
+    // Expert rather than guessing at the XDR-encoded reason ourselves.
+    throw new Error(
+      `Transaction was not successful on-chain. Inspect it at https://stellar.expert/explorer/testnet/tx/${result.hash}`
+    );
+  }
 
   const { data, error: fnError } = await supabase.functions.invoke("anchor-event", {
     body: { eventId: event.id, txHash: result.hash },
