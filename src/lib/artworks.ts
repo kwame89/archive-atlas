@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { isValidUuid } from "./errors";
 import type { Artwork, ArtworkEvent, ArtworkImage, Profile } from "../types/database";
 
 export interface CreateArtworkInput {
@@ -144,6 +145,7 @@ function maybeAutoAnchor(eventId: string, actorId: string, eventType: ArtworkEve
 }
 
 export async function getArtworkCollaborators(artworkId: string): Promise<Profile[]> {
+  if (!isValidUuid(artworkId)) return [];
   const { data, error } = await supabase
     .from("artwork_collaborators")
     .select("profile_id, profiles(*)")
@@ -397,6 +399,7 @@ export async function logConditionReport(
 }
 
 export async function getArtworkImages(artworkId: string): Promise<ArtworkImage[]> {
+  if (!isValidUuid(artworkId)) return [];
   const { data, error } = await supabase
     .from("artwork_images")
     .select("*")
@@ -492,6 +495,7 @@ export async function isController(profileId: string, controllerProfileId: strin
 }
 
 export async function getArtwork(id: string): Promise<Artwork | null> {
+  if (!isValidUuid(id)) return null;
   const { data, error } = await supabase.from("artworks").select("*").eq("id", id).maybeSingle();
   if (error) throw error;
   return data;
@@ -533,6 +537,7 @@ export async function listArtworksByArtist(rootArtistId: string): Promise<Artwor
 }
 
 export async function getArtworkEvents(artworkId: string): Promise<ArtworkEvent[]> {
+  if (!isValidUuid(artworkId)) return [];
   const { data, error } = await supabase
     .from("events")
     .select("*")

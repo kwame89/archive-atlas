@@ -1,8 +1,10 @@
 import { supabase } from "./supabaseClient";
 import { anchorEvent, isController } from "./artworks";
+import { isValidUuid } from "./errors";
 import type { Profile, ProfileType, TrustTier } from "../types/database";
 
 export async function getProfile(id: string): Promise<Profile | null> {
+  if (!isValidUuid(id)) return null;
   const { data, error } = await supabase.from("profiles").select("*").eq("id", id).maybeSingle();
   if (error) throw error;
   return data;

@@ -1,3 +1,11 @@
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A malformed (non-UUID) id in a URL should behave like "not found", not
+ * like a raw Postgres "invalid input syntax for type uuid" error. */
+export function isValidUuid(id: string): boolean {
+  return UUID_RE.test(id);
+}
+
 /**
  * Supabase/Postgrest errors are plain objects with a `message` property,
  * not JS Error instances — `err instanceof Error` misses them, which was
