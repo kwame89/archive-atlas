@@ -254,9 +254,8 @@ provenance and the art market actually function:
 **Screens:** artwork page (public provenance timeline) ✅, profile page (trust-tier badge, claim
 status, bio/website/CV, avatar) ✅, claim flow (email/social verification) ✅, role-gated
 event-logging forms ✅ (genesis/ownership_transfer/custody_change/exhibition), a collective/studio
-dashboard for managing member profiles ✅, and collector privacy settings ❌ **not built — the
-private-by-default behavior exists in `createProfile`, but there's no settings UI for a
-collector to change it**.
+dashboard for managing member profiles ✅, and collector privacy settings ✅ (a "Publicly visible
+profile" checkbox in the profile edit form, backed by `updateProfile`'s `isPublic` field).
 
 **Phased order:**
 - **Phase 0 — core product, no chain.** ✅ **Done.** Profile/Artwork/Event CRUD, email/social

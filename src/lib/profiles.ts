@@ -67,6 +67,10 @@ export interface UpdateProfileInput {
   legalName?: string | null;
   bio?: string | null;
   websiteUrl?: string | null;
+  /** Whether this profile is publicly visible — see SCOPE.md's "Collector
+   * privacy" design decision. Defaults to false for collectors at creation;
+   * this lets them (or any profile type) change it later. */
+  isPublic?: boolean;
 }
 
 export async function updateProfile(profileId: string, input: UpdateProfileInput): Promise<Profile> {
@@ -75,6 +79,7 @@ export async function updateProfile(profileId: string, input: UpdateProfileInput
   if (input.legalName !== undefined) updates.legal_name = input.legalName || null;
   if (input.bio !== undefined) updates.bio = input.bio || null;
   if (input.websiteUrl !== undefined) updates.website_url = input.websiteUrl || null;
+  if (input.isPublic !== undefined) updates.is_public = input.isPublic;
 
   const { data, error } = await supabase
     .from("profiles")

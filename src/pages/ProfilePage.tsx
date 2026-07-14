@@ -35,6 +35,7 @@ export function ProfilePage() {
   const [bioDraft, setBioDraft] = useState("");
   const [websiteDraft, setWebsiteDraft] = useState("");
   const [legalNameDraft, setLegalNameDraft] = useState("");
+  const [isPublicDraft, setIsPublicDraft] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState("");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -73,6 +74,7 @@ export function ProfilePage() {
     setBioDraft(profile.bio ?? "");
     setWebsiteDraft(profile.website_url ?? "");
     setLegalNameDraft(profile.legal_name ?? "");
+    setIsPublicDraft(profile.is_public);
     setEditError("");
     setEditing(true);
   }
@@ -87,6 +89,7 @@ export function ProfilePage() {
         bio: bioDraft,
         websiteUrl: websiteDraft,
         legalName: legalNameDraft,
+        isPublic: isPublicDraft,
       });
       setProfile(updated);
       setEditing(false);
@@ -175,9 +178,14 @@ export function ProfilePage() {
       {profile.bio && <p className="profile-bio">{profile.bio}</p>}
 
       {canEdit && !editing && (
-        <button type="button" className="secondary" onClick={startEditing}>
-          Edit profile
-        </button>
+        <>
+          {!profile.is_public && (
+            <p className="muted">Your profile is private — hidden from other visitors.</p>
+          )}
+          <button type="button" className="secondary" onClick={startEditing}>
+            Edit profile
+          </button>
+        </>
       )}
 
       {canEdit && editing && (
@@ -218,6 +226,22 @@ export function ProfilePage() {
             disabled={uploadingCv}
             onChange={(e) => handleUpload(e.target.files?.[0], "cv")}
           />
+
+          <label htmlFor="isPublic">
+            <input
+              id="isPublic"
+              type="checkbox"
+              checked={isPublicDraft}
+              onChange={(e) => setIsPublicDraft(e.target.checked)}
+            />{" "}
+            Publicly visible profile
+          </label>
+          <p className="muted">
+            When off, your name is hidden from other visitors — collectors often keep this off.
+            Transfers involving you still show up in a piece's public provenance record, just
+            without your identity attached. The artist can always see who owns their work,
+            regardless of this setting.
+          </p>
 
           <button type="submit" disabled={saving}>
             {saving ? "Saving…" : "Save"}
