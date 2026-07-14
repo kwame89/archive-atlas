@@ -106,6 +106,7 @@ export interface ArtworkEvent {
   corroborated_by: string | null;
   corroborated_at: string | null;
   condition_rating: string | null;
+  wallet_signed: boolean;
   created_at: string;
 }
 

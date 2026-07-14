@@ -1,11 +1,32 @@
 import { supabase } from "./supabaseClient";
 import { anchorEvent, isController } from "./artworks";
-import type { Profile, ProfileType } from "../types/database";
+import type { Profile, ProfileType, TrustTier } from "../types/database";
 
 export async function getProfile(id: string): Promise<Profile | null> {
   const { data, error } = await supabase.from("profiles").select("*").eq("id", id).maybeSingle();
   if (error) throw error;
   return data;
+}
+
+/** Batch lookup of trust tier + linked wallet, for deciding per-event whether
+ * an actor is eligible for wallet-signed anchoring (see stellarWallet.ts). */
+export async function getWalletInfo(
+  ids: string[]
+): Promise<Record<string, { trustTier: TrustTier; linkedWallet: string | null }>> {
+  const uniqueIds = [...new Set(ids)].filter(Boolean);
+  if (uniqueIds.length === 0) return {};
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, trust_tier, linked_wallet")
+    .in("id", uniqueIds);
+  if (error) throw error;
+
+  const map: Record<string, { trustTier: TrustTier; linkedWallet: string | null }> = {};
+  for (const row of (data ?? []) as Pick<Profile, "id" | "trust_tier" | "linked_wallet">[]) {
+    map[row.id] = { trustTier: row.trust_tier, linkedWallet: row.linked_wallet };
+  }
+  return map;
 }
 
 export async function getMyProfile(authUserId: string): Promise<Profile | null> {

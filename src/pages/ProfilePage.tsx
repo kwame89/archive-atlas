@@ -9,6 +9,7 @@ import {
   uploadProfileMedia,
 } from "../lib/profiles";
 import { getPrimaryImageUrls, isController, listArtworksByArtist } from "../lib/artworks";
+import { linkWallet } from "../lib/stellarWallet";
 import { getErrorMessage } from "../lib/errors";
 import { AppHeader } from "../components/AppHeader";
 import type { Artwork, Profile } from "../types/database";
@@ -43,6 +44,8 @@ export function ProfilePage() {
   const [uploadingCv, setUploadingCv] = useState(false);
   const [selectingForCatalog, setSelectingForCatalog] = useState(false);
   const [selectedForCatalog, setSelectedForCatalog] = useState<string[]>([]);
+  const [linkingWallet, setLinkingWallet] = useState(false);
+  const [linkWalletError, setLinkWalletError] = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -123,6 +126,20 @@ export function ProfilePage() {
     navigate(`/catalog/print?ids=${selectedForCatalog.join(",")}`);
   }
 
+  async function handleLinkWallet() {
+    if (!profile) return;
+    setLinkingWallet(true);
+    setLinkWalletError("");
+    try {
+      const publicKey = await linkWallet(profile.id);
+      setProfile({ ...profile, linked_wallet: publicKey, trust_tier: "wallet_linked" });
+    } catch (err) {
+      setLinkWalletError(getErrorMessage(err));
+    } finally {
+      setLinkingWallet(false);
+    }
+  }
+
   async function handleUpload(file: File | undefined, kind: "avatar" | "cv") {
     if (!file || !profile) return;
     const setBusy = kind === "avatar" ? setUploadingAvatar : setUploadingCv;
@@ -194,6 +211,32 @@ export function ProfilePage() {
                 View CV →
               </a>
             </p>
+          )}
+          {profile.linked_wallet && (
+            <p className="muted">
+              Wallet linked:{" "}
+              <a
+                href={`https://stellar.expert/explorer/testnet/account/${profile.linked_wallet}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {profile.linked_wallet.slice(0, 4)}…{profile.linked_wallet.slice(-4)}
+              </a>
+            </p>
+          )}
+          {canEdit && !profile.linked_wallet && (
+            <div className="wallet-link">
+              <button type="button" className="secondary" disabled={linkingWallet} onClick={handleLinkWallet}>
+                {linkingWallet ? "Linking…" : "Link Stellar wallet"}
+              </button>
+              <p className="muted">
+                Connects Freighter and proves you hold the key with a signature — no transaction,
+                no funds needed. Once linked, new genesis and ownership-transfer events you log
+                will ask you to sign them with your own wallet instead of being anchored silently
+                by the platform.
+              </p>
+              {linkWalletError && <p className="error">{linkWalletError}</p>}
+            </div>
           )}
         </div>
       </div>

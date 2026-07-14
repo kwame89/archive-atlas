@@ -18,7 +18,9 @@ development connects to a hosted Supabase project.
 4. Deploy `supabase/functions/anchor-event/` as a Supabase Edge Function and set the
    `STELLAR_ANCHOR_SECRET` secret to a funded Stellar testnet secret key (optional — the app
    works without it; events just won't be anchored on Stellar).
-5. `npm run dev`
+5. Deploy `supabase/functions/link-wallet/` as a Supabase Edge Function (needed for Phase 2
+   wallet-linking; no extra secrets to set — it only uses the auto-provided Supabase ones).
+6. `npm run dev`
 
 ## Project structure
 
@@ -36,4 +38,6 @@ Phase 0 (core product) is complete and verified: auth/claim flow, artwork record
 and rich detail fields, provenance timelines, ownership/custody transfer logging, collaborators,
 a collective dashboard for unclaimed profiles, and print/PDF export. Phase 1 (Stellar testnet
 anchoring of event hashes via the anchor-event Edge Function) is deployed and verified live.
+Phase 2 (Freighter wallet-linking, with wallet-signed anchoring for genesis/ownership_transfer
+events) is built — see SCOPE.md's Phase 2 notes for exactly how it changes anchoring behavior.
 See SCOPE.md's MVP Build Plan for the full status breakdown.

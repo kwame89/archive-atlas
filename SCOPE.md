@@ -273,8 +273,21 @@ profile" checkbox in the profile edit form, backed by `updateProfile`'s `isPubli
   provenance timeline. Note: platform-signed anchoring proves an event's content existed
   unaltered at a point in time; it does not prove the artist personally signed it — that's
   what Phase 2 wallet-linking adds.
-- **Phase 2 — wallet-linking tier.** Not started (expected — depends on Phase 1). Artist pairs a
-  Stellar keypair; new attestations get actually signed.
+- **Phase 2 — wallet-linking tier.** ✅ **Done.** A profile links a Freighter wallet from its
+  profile page: Freighter signs a SEP-53 message (no transaction, no funding needed — this is
+  proof of key ownership, not something recorded on-chain) and the `link-wallet` Edge Function
+  independently re-verifies that signature before bumping `trust_tier` to `wallet_linked` and
+  storing `linked_wallet`. Deliberately scoped friction: genesis and ownership_transfer events by
+  a wallet-linked actor are no longer auto-anchored by the platform — a "Sign & anchor with your
+  wallet" button appears on that event in the provenance timeline instead, requiring a live
+  Freighter approval (funding the testnet account via Friendbot first if needed) before the
+  event's hash actually lands on-chain under the artist's own key. Everything else (exhibition,
+  custody_change, condition_report, and claim, plus genesis/ownership_transfer for anyone not
+  wallet-linked) keeps today's silent platform-anchoring unchanged. `claim` was included in the
+  original "high-stakes" list but in practice can't hit the wallet-signed path under normal
+  sequencing — wallet-linking only happens after claiming, so no UI was built for it. Anchored
+  events now show "signed by artist" vs. platform-anchored in the timeline
+  (`events.wallet_signed`).
 - **Phase 3 — richer role workflows.** Royalty-commitment field ✅, exhibition logging ✅
   (self-logged + corroborated), and condition reports ✅ are all built. The Curator role beyond
   exhibition logging still has no dedicated functionality. A multi-artwork catalog export

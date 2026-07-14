@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../lib/AuthProvider";
-import { getMyProfile, canActFor } from "../lib/profiles";
+import { getMyProfile, canActFor, getWalletInfo } from "../lib/profiles";
+import { signAndAnchorEvent } from "../lib/stellarWallet";
 import {
   addCollaborators,
   corroborateExhibition,
@@ -65,6 +66,12 @@ export function ArtworkPage() {
   const [royaltyDraft, setRoyaltyDraft] = useState("");
   const [royaltyError, setRoyaltyError] = useState("");
   const [savingRoyalty, setSavingRoyalty] = useState(false);
+  const [walletInfo, setWalletInfo] = useState<
+    Record<string, { trustTier: string; linkedWallet: string | null }>
+  >({});
+  const [signingEventId, setSigningEventId] = useState<string | null>(null);
+  const [signError, setSignError] = useState("");
+  const [signErrorEventId, setSignErrorEventId] = useState<string | null>(null);
 
   async function reloadImages() {
     if (!id) return;
@@ -103,7 +110,9 @@ export function ArtworkPage() {
         artworkResult.current_custodian_id
       );
     }
-    setNames(await getProfileNames(profileIds.filter((x): x is string => !!x)));
+    const uniqueProfileIds = profileIds.filter((x): x is string => !!x);
+    setNames(await getProfileNames(uniqueProfileIds));
+    setWalletInfo(await getWalletInfo(eventsResult.map((e) => e.actor_id)));
 
     if (session && artworkResult) {
       const myProfile = await getMyProfile(session.user.id);
@@ -228,6 +237,23 @@ export function ArtworkPage() {
       setRoyaltyError(getErrorMessage(err));
     } finally {
       setSavingRoyalty(false);
+    }
+  }
+
+  async function handleSignWithWallet(event: ArtworkEvent) {
+    const linkedWallet = walletInfo[event.actor_id]?.linkedWallet;
+    if (!linkedWallet) return;
+    setSigningEventId(event.id);
+    setSignError("");
+    setSignErrorEventId(null);
+    try {
+      await signAndAnchorEvent(linkedWallet, event);
+      await reloadEvents();
+    } catch (err) {
+      setSignError(getErrorMessage(err));
+      setSignErrorEventId(event.id);
+    } finally {
+      setSigningEventId(null);
     }
   }
 
@@ -567,16 +593,32 @@ export function ArtworkPage() {
               </p>
             )}
             {event.notes && <p className="muted">{event.notes}</p>}
-            {event.on_chain_anchor_hash && (
+            {event.on_chain_anchor_hash ? (
               <p className="muted">
                 <a
                   href={`https://stellar.expert/explorer/testnet/tx/${event.on_chain_anchor_hash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Anchored on Stellar →
+                  {event.wallet_signed ? "Anchored on Stellar (signed by artist) →" : "Anchored on Stellar →"}
                 </a>
               </p>
+            ) : (
+              (event.type === "genesis" || event.type === "ownership_transfer") &&
+              myProfileId === event.actor_id &&
+              walletInfo[event.actor_id]?.trustTier === "wallet_linked" && (
+                <div className="edit-date-row">
+                  <button
+                    type="button"
+                    className="secondary"
+                    disabled={signingEventId === event.id}
+                    onClick={() => handleSignWithWallet(event)}
+                  >
+                    {signingEventId === event.id ? "Signing…" : "Sign & anchor with your wallet"}
+                  </button>
+                  {signErrorEventId === event.id && <p className="error">{signError}</p>}
+                </div>
+              )
             )}
           </li>
         ))}
