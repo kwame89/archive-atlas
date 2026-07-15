@@ -22,6 +22,19 @@ development connects to a hosted Supabase project.
    wallet-linking; no extra secrets to set — it only uses the auto-provided Supabase ones).
 6. `npm run dev`
 
+## Test on a phone
+
+For private testing on a phone connected to the same Wi-Fi network as the Mac:
+
+1. Run `npm run dev:phone`.
+2. Open the `Network` address Vite prints, using port `5182`, on the phone.
+3. Add that exact origin plus `/**` to Supabase Authentication > URL
+   Configuration > Redirect URLs so email sign-in links can return to the phone.
+
+This only exposes the development server to devices on the local network. Keep
+the app on Stellar testnet and use test data/test wallets until a separate HTTPS
+staging deployment is configured.
+
 ## Project structure
 
 ```

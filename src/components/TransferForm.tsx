@@ -94,7 +94,7 @@ export function TransferForm({
               checked={mode === "custody"}
               onChange={() => setMode("custody")}
             />{" "}
-            Custody change (loan/consignment)
+            Custody change (loan)
           </label>
         </div>
       )}

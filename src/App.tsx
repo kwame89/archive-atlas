@@ -1,12 +1,14 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider, useAuth } from "./lib/AuthProvider";
+import { AuthProvider } from "./lib/AuthProvider";
+import { useAuth } from "./lib/authContext";
 import { getMyProfile } from "./lib/profiles";
 import { SignInPage } from "./pages/SignInPage";
 import { LandingPage } from "./pages/LandingPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { HomePage } from "./pages/HomePage";
 import { CreateArtworkPage } from "./pages/CreateArtworkPage";
+import { EditArtworkPage } from "./pages/EditArtworkPage";
 import { ArtworkPage } from "./pages/ArtworkPage";
 import { ArtworkPrintPage } from "./pages/ArtworkPrintPage";
 import { CatalogPrintPage } from "./pages/CatalogPrintPage";
@@ -63,6 +65,12 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          <Route
+            path="/artworks/:id/edit"
+            element={
+              <RequireProfile>{(profile) => <EditArtworkPage profile={profile} />}</RequireProfile>
+            }
+          />
           <Route path="/artworks/:id" element={<ArtworkPage />} />
           <Route path="/profiles/:id" element={<ProfilePage />} />
           <Route path="/artworks/:id/print" element={<ArtworkPrintPage />} />

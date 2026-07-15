@@ -1,6 +1,13 @@
 import { useEffect, useState, type FormEvent } from "react";
+import {
+  CheckCircle2,
+  ExternalLink,
+  RefreshCw,
+  Unplug,
+  Wallet,
+} from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useAuth } from "../lib/AuthProvider";
+import { useAuth } from "../lib/authContext";
 import {
   canActFor,
   getMyProfile,
@@ -9,7 +16,7 @@ import {
   uploadProfileMedia,
 } from "../lib/profiles";
 import { getPrimaryImageUrls, isController, listArtworksByArtist } from "../lib/artworks";
-import { linkWallet } from "../lib/stellarWallet";
+import { linkWallet, disconnectWallet } from "../lib/stellarWallet";
 import { getErrorMessage } from "../lib/errors";
 import { AppHeader } from "../components/AppHeader";
 import type { Artwork, Profile } from "../types/database";
@@ -45,6 +52,7 @@ export function ProfilePage() {
   const [selectingForCatalog, setSelectingForCatalog] = useState(false);
   const [selectedForCatalog, setSelectedForCatalog] = useState<string[]>([]);
   const [linkingWallet, setLinkingWallet] = useState(false);
+  const [disconnectingWallet, setDisconnectingWallet] = useState(false);
   const [linkWalletError, setLinkWalletError] = useState("");
 
   useEffect(() => {
@@ -140,6 +148,20 @@ export function ProfilePage() {
     }
   }
 
+  async function handleDisconnectWallet() {
+    if (!profile) return;
+    setDisconnectingWallet(true);
+    setLinkWalletError("");
+    try {
+      await disconnectWallet(profile.id);
+      setProfile({ ...profile, linked_wallet: null, trust_tier: "claimed" });
+    } catch (err) {
+      setLinkWalletError(getErrorMessage(err));
+    } finally {
+      setDisconnectingWallet(false);
+    }
+  }
+
   async function handleUpload(file: File | undefined, kind: "avatar" | "cv") {
     if (!file || !profile) return;
     const setBusy = kind === "avatar" ? setUploadingAvatar : setUploadingCv;
@@ -186,7 +208,7 @@ export function ProfilePage() {
             {profile.display_name.slice(0, 1).toUpperCase()}
           </div>
         )}
-        <div>
+        <div className="profile-identity">
           <h1>{profile.display_name}</h1>
           <p className="muted">
             {profile.type} · <span className="tier-badge">{TIER_LABELS[profile.trust_tier]}</span>
@@ -212,31 +234,86 @@ export function ProfilePage() {
               </a>
             </p>
           )}
-          {profile.linked_wallet && (
-            <p className="muted">
-              Wallet linked:{" "}
-              <a
-                href={`https://stellar.expert/explorer/testnet/account/${profile.linked_wallet}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {profile.linked_wallet.slice(0, 4)}…{profile.linked_wallet.slice(-4)}
-              </a>
-            </p>
-          )}
-          {canEdit && !profile.linked_wallet && (
-            <div className="wallet-link">
-              <button type="button" className="secondary" disabled={linkingWallet} onClick={handleLinkWallet}>
-                {linkingWallet ? "Linking…" : "Link Stellar wallet"}
-              </button>
-              <p className="muted">
-                Connects Freighter and proves you hold the key with a signature — no transaction,
-                no funds needed. Once linked, new genesis and ownership-transfer events you log
-                will ask you to sign them with your own wallet instead of being anchored silently
-                by the platform.
-              </p>
-              {linkWalletError && <p className="error">{linkWalletError}</p>}
-            </div>
+          {canEdit && (
+            <section className="wallet-account" aria-labelledby="stellar-wallet-heading">
+              <div className="wallet-account-icon" aria-hidden="true">
+                <Wallet size={20} strokeWidth={1.7} />
+              </div>
+              <div className="wallet-account-body">
+                <header className="wallet-account-heading">
+                  <div>
+                    <span>Stellar identity</span>
+                    <h2 id="stellar-wallet-heading">Wallet</h2>
+                  </div>
+                  <span
+                    className={`wallet-account-status${profile.linked_wallet ? " is-connected" : ""}`}
+                  >
+                    {profile.linked_wallet && <CheckCircle2 size={14} aria-hidden="true" />}
+                    {profile.linked_wallet ? "Connected to testnet" : "Not connected"}
+                  </span>
+                </header>
+
+                {profile.linked_wallet ? (
+                  <>
+                    <div className="wallet-address-row">
+                      <code>
+                        {profile.linked_wallet.slice(0, 8)}…{profile.linked_wallet.slice(-8)}
+                      </code>
+                      <a
+                        href={`https://stellar.expert/explorer/testnet/account/${profile.linked_wallet}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="View this account on Stellar Expert"
+                      >
+                        Explorer
+                        <ExternalLink size={13} aria-hidden="true" />
+                      </a>
+                    </div>
+                    <p className="wallet-account-meta">Artist-controlled signing is active.</p>
+                  </>
+                ) : (
+                  <p className="wallet-account-meta">
+                    Supports Freighter, Albedo, Rabet, LOBSTR, and Hana.
+                  </p>
+                )}
+                {linkWalletError && <p className="error wallet-account-error">{linkWalletError}</p>}
+              </div>
+
+              <div className="wallet-account-actions">
+                {profile.linked_wallet ? (
+                  <>
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={linkingWallet || disconnectingWallet}
+                      onClick={handleLinkWallet}
+                    >
+                      <RefreshCw size={15} aria-hidden="true" />
+                      {linkingWallet ? "Linking…" : "Change wallet"}
+                    </button>
+                    <button
+                      type="button"
+                      className="wallet-disconnect-button"
+                      disabled={linkingWallet || disconnectingWallet}
+                      onClick={handleDisconnectWallet}
+                    >
+                      <Unplug size={15} aria-hidden="true" />
+                      {disconnectingWallet ? "Disconnecting…" : "Disconnect"}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="secondary"
+                    disabled={linkingWallet}
+                    onClick={handleLinkWallet}
+                  >
+                    <Wallet size={15} aria-hidden="true" />
+                    {linkingWallet ? "Linking…" : "Link wallet"}
+                  </button>
+                )}
+              </div>
+            </section>
           )}
         </div>
       </div>

@@ -5,7 +5,12 @@ import {
   Operation,
   TransactionBuilder,
 } from "@stellar/stellar-sdk";
-import { isConnected, requestAccess, signMessage, signTransaction } from "@stellar/freighter-api";
+import { StellarWalletsKit } from "@creit.tech/stellar-wallets-kit";
+import { FreighterModule } from "@creit.tech/stellar-wallets-kit/modules/freighter";
+import { AlbedoModule } from "@creit.tech/stellar-wallets-kit/modules/albedo";
+import { RabetModule } from "@creit.tech/stellar-wallets-kit/modules/rabet";
+import { LobstrModule } from "@creit.tech/stellar-wallets-kit/modules/lobstr";
+import { HanaModule } from "@creit.tech/stellar-wallets-kit/modules/hana";
 import { supabase } from "./supabaseClient";
 import { getErrorMessage } from "./errors";
 
@@ -13,16 +18,38 @@ const HORIZON_URL = "https://horizon-testnet.stellar.org";
 const NETWORK_PASSPHRASE = Networks.TESTNET;
 const FRIENDBOT_URL = "https://friendbot.stellar.org";
 
-export async function isFreighterInstalled(): Promise<boolean> {
-  const { isConnected: connected } = await isConnected();
-  return Boolean(connected);
+// Initialize wallet kit once at module load
+StellarWalletsKit.init({
+  modules: [
+    new FreighterModule(),
+    new AlbedoModule(),
+    new RabetModule(),
+    new LobstrModule(),
+    new HanaModule(),
+  ],
+  network: NETWORK_PASSPHRASE,
+});
+
+export async function isWalletAvailable(): Promise<boolean> {
+  // Wallet-kit doesn't expose direct availability check — authModal will handle unavailability.
+  // This is a stub for backwards compatibility; always returns true since we'll show the modal.
+  return true;
 }
 
-async function connectFreighter(): Promise<string> {
-  const { address, error } = await requestAccess();
-  if (error) throw new Error(error.message ?? "Freighter access was denied");
-  if (!address) throw new Error("Freighter did not return a public key");
-  return address;
+async function connectWallet(): Promise<string> {
+  try {
+    const result = await StellarWalletsKit.authModal();
+    if (!result?.address) throw new Error("Wallet selection was cancelled");
+    return result.address;
+  } catch (err) {
+    // authModal throws with code -1 if user closes the modal without selecting
+    if ((err as { code?: number })?.code === -1) {
+      throw new Error("Wallet selection was cancelled");
+    }
+    throw new Error(
+      (err as { message?: string })?.message ?? "Could not connect to a wallet"
+    );
+  }
 }
 
 /**
@@ -51,15 +78,40 @@ async function unwrapFunctionError(error: unknown): Promise<string> {
  * off-chain SEP-53 message signature (no transaction, no funding needed) —
  * see the link-wallet Edge Function for the server-side verification, which
  * never trusts this client's word alone.
+ *
+ * stellar-wallets-kit's message signing support varies by wallet:
+ * Freighter, Albedo, and Hana support it; LOBSTR and Rabet may not.
+ * Gracefully falls back to Freighter's direct API if kit's signing fails.
  */
 export async function linkWallet(profileId: string): Promise<string> {
-  const publicKey = await connectFreighter();
+  const publicKey = await connectWallet();
   const timestamp = new Date().toISOString();
   const message = `Link Archive Atlas profile ${profileId} at ${timestamp}`;
 
-  const { signedMessage, error } = await signMessage(message, { address: publicKey });
-  if (error) throw new Error(error.message ?? "Wallet signature was declined");
-  if (!signedMessage) throw new Error("Freighter did not return a signature");
+  let signedMessage: string | undefined;
+
+  // Try wallet-kit's signing first (some wallets support message signing)
+  try {
+    const result = await StellarWalletsKit.signMessage(message, { address: publicKey });
+    signedMessage = result.signedMessage;
+  } catch {
+    // Wallet-kit doesn't support signing, or method unavailable — try Freighter fallback
+    try {
+      const { signMessage: freighterSign } = await import("@stellar/freighter-api");
+      const { signedMessage: fResult, error } = await freighterSign(message, { address: publicKey });
+      if (error) throw new Error(error.message ?? "Wallet signature was declined");
+      signedMessage =
+        typeof fResult === "string" ? fResult : fResult?.toString("base64");
+    } catch (freightErr) {
+      throw new Error(
+        freightErr instanceof Error
+          ? freightErr.message
+          : "This wallet does not support message signing"
+      );
+    }
+  }
+
+  if (!signedMessage) throw new Error("Wallet did not return a signature");
 
   const { data, error: fnError } = await supabase.functions.invoke("link-wallet", {
     body: { profileId, publicKey, timestamp, signedMessage },
@@ -124,9 +176,9 @@ function canonicalEventJson(event: CanonicalEventFields): string {
 /**
  * Signs and anchors an event with the actor's own linked wallet instead of
  * the platform's key — the "high-stakes" path for genesis/ownership_transfer
- * events (see SCOPE.md's Phase 2 notes). Requires a live Freighter approval;
- * throws on any failure so the caller can show an error or fall back to
- * leaving the event platform-anchored, rather than silently doing nothing.
+ * events (see SCOPE.md's Phase 2 notes). Works with any wallet in the kit
+ * (Freighter, Albedo, Rabet, LOBSTR, Hana); throws on any failure so the
+ * caller can show an error or fall back to leaving the event platform-anchored.
  */
 export async function signAndAnchorEvent(
   actorPublicKey: string,
@@ -151,12 +203,14 @@ export async function signAndAnchorEvent(
     .setTimeout(180)
     .build();
 
-  const { signedTxXdr, error } = await signTransaction(transaction.toXDR(), {
-    networkPassphrase: NETWORK_PASSPHRASE,
-    address: actorPublicKey,
-  });
-  if (error) throw new Error(error.message ?? "Wallet signature was declined");
-  if (!signedTxXdr) throw new Error("Freighter did not return a signed transaction");
+  const { signedTxXdr } = await StellarWalletsKit.signTransaction(
+    transaction.toXDR(),
+    {
+      networkPassphrase: NETWORK_PASSPHRASE,
+      address: actorPublicKey,
+    }
+  );
+  if (!signedTxXdr) throw new Error("Wallet did not return a signed transaction");
 
   const signedTx = TransactionBuilder.fromXDR(signedTxXdr, NETWORK_PASSPHRASE);
 
@@ -191,4 +245,16 @@ export async function signAndAnchorEvent(
   if (data?.error) throw new Error(data.error);
 
   return result.hash;
+}
+
+/** Disconnects the wallet locally and removes the verified link from the
+ * controlled profile. The server performs its own authorization check. */
+export async function disconnectWallet(profileId: string): Promise<void> {
+  const { data, error: fnError } = await supabase.functions.invoke("link-wallet", {
+    body: { action: "disconnect", profileId },
+  });
+  if (fnError) throw new Error(await unwrapFunctionError(fnError));
+  if (data?.error) throw new Error(data.error);
+
+  await StellarWalletsKit.disconnect();
 }

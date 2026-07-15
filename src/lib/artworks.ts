@@ -30,6 +30,28 @@ export interface CreateArtworkInput {
   collaboratorIds?: string[];
 }
 
+export interface UpdateArtworkDetailsInput {
+  title: string;
+  medium: string | null;
+  dimensions: string | null;
+  height: number | null;
+  width: number | null;
+  depth: number | null;
+  year: number | null;
+  isCirca: boolean;
+  dateDisplayOverride: string | null;
+  editionNumber: number | null;
+  editionTotal: number | null;
+  description: string | null;
+  tags: string[] | null;
+  subjectMatter: string | null;
+  artType: string | null;
+  isSigned: boolean;
+  signatureNotes: string | null;
+  condition: string | null;
+  royaltyPercentage: number | null;
+}
+
 /**
  * Logs the genesis event for a new artwork: rootArtistId is credited as
  * creator/initial owner/custodian. actorId (who is actually performing this
@@ -99,6 +121,41 @@ export async function createArtwork(
   }
 
   return artwork;
+}
+
+/** Updates descriptive artwork metadata without rewriting provenance or ownership. */
+export async function updateArtworkDetails(
+  artworkId: string,
+  input: UpdateArtworkDetailsInput
+): Promise<Artwork> {
+  const { data, error } = await supabase
+    .from("artworks")
+    .update({
+      title: input.title.trim(),
+      medium: input.medium,
+      dimensions: input.dimensions,
+      height: input.height,
+      width: input.width,
+      depth: input.depth,
+      year: input.year,
+      is_circa: input.isCirca,
+      date_display_override: input.dateDisplayOverride,
+      edition_number: input.editionNumber,
+      edition_total: input.editionTotal,
+      description: input.description,
+      tags: input.tags && input.tags.length > 0 ? input.tags : null,
+      subject_matter: input.subjectMatter,
+      art_type: input.artType,
+      is_signed: input.isSigned,
+      signature_notes: input.signatureNotes,
+      condition: input.condition,
+      royalty_percentage: input.royaltyPercentage,
+    })
+    .eq("id", artworkId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }
 
 /**
@@ -450,6 +507,76 @@ export async function uploadArtworkImages(
   return uploaded;
 }
 
+function getArtworkImageStoragePath(url: string): string | null {
+  const marker = "/storage/v1/object/public/artwork-images/";
+  const markerIndex = url.indexOf(marker);
+  if (markerIndex === -1) return null;
+
+  const encodedPath = url.slice(markerIndex + marker.length).split("?")[0];
+  try {
+    return decodeURIComponent(encodedPath);
+  } catch {
+    return encodedPath;
+  }
+}
+
+async function removeArtworkImageObject(url: string): Promise<void> {
+  const path = getArtworkImageStoragePath(url);
+  if (!path) return;
+
+  const { error } = await supabase.storage.from("artwork-images").remove([path]);
+  if (error) throw error;
+}
+
+/** Replaces an image file while preserving its row, order, and primary status. */
+export async function replaceArtworkImage(
+  image: ArtworkImage,
+  file: File
+): Promise<ArtworkImage> {
+  const path = `${image.artwork_id}/${crypto.randomUUID()}-${file.name}`;
+  const bucket = supabase.storage.from("artwork-images");
+  const { error: uploadError } = await bucket.upload(path, file);
+  if (uploadError) throw uploadError;
+
+  const {
+    data: { publicUrl },
+  } = bucket.getPublicUrl(path);
+
+  const { data: updatedImage, error: updateError } = await supabase
+    .from("artwork_images")
+    .update({ url: publicUrl })
+    .eq("id", image.id)
+    .eq("artwork_id", image.artwork_id)
+    .select()
+    .single();
+
+  if (updateError) {
+    await bucket.remove([path]).catch(() => undefined);
+    throw updateError;
+  }
+
+  await removeArtworkImageObject(image.url).catch(() => undefined);
+  return updatedImage;
+}
+
+/** Removes an image and promotes another image first when deleting the primary. */
+export async function removeArtworkImage(image: ArtworkImage): Promise<void> {
+  const existingImages = await getArtworkImages(image.artwork_id);
+  if (image.is_primary) {
+    const nextPrimary = existingImages.find((candidate) => candidate.id !== image.id);
+    if (nextPrimary) await setPrimaryImage(image.artwork_id, nextPrimary.id);
+  }
+
+  const { error: deleteError } = await supabase
+    .from("artwork_images")
+    .delete()
+    .eq("id", image.id)
+    .eq("artwork_id", image.artwork_id);
+  if (deleteError) throw deleteError;
+
+  await removeArtworkImageObject(image.url).catch(() => undefined);
+}
+
 /** Unsets the current primary (if any) and sets the given image as primary. */
 export async function setPrimaryImage(artworkId: string, imageId: string): Promise<void> {
   const { error: unsetError } = await supabase
@@ -545,6 +672,43 @@ export async function getArtworkEvents(artworkId: string): Promise<ArtworkEvent[
     .order("occurred_at", { ascending: true });
   if (error) throw error;
   return data ?? [];
+}
+
+export interface RecentArtworkEvent {
+  event: ArtworkEvent;
+  artworkTitle: string;
+}
+
+export async function getArtworkEventCount(artworkIds: string[]): Promise<number> {
+  if (artworkIds.length === 0) return 0;
+
+  const { count, error } = await supabase
+    .from("events")
+    .select("id", { count: "exact", head: true })
+    .in("artwork_id", artworkIds);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/** Recent archive activity for a known set of artworks, newest first. */
+export async function getRecentArtworkEvents(
+  artworkIds: string[],
+  limit = 6
+): Promise<RecentArtworkEvent[]> {
+  if (artworkIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("events")
+    .select("*, artworks(title)")
+    .in("artwork_id", artworkIds)
+    .order("occurred_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+
+  return (data ?? []).map((row) => {
+    const { artworks, ...event } = row as ArtworkEvent & { artworks: { title: string } | null };
+    return { event, artworkTitle: artworks?.title ?? "Untitled" };
+  });
 }
 
 export interface LoggedExhibition {

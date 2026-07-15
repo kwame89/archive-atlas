@@ -112,6 +112,14 @@ dimensions, date with circa/override support, edition info, description, tags, s
 signature status, condition, a private-notes field only the artist ever sees, co-artist
 attribution for collaborative pieces, and a suggested resale-royalty percentage). *Shipped.*
 
+### Consignment management
+A private operational record for placing work with a gallery, dealer, or other consignee. It
+captures asking price, commission, term dates, insurance responsibility and value, a private
+agreement file, internal notes, and sold/returned outcomes. Starting a consignment records the
+physical custody change without transferring ownership; returning it restores custody to the
+consignor, while a sold outcome remains separate from the formal ownership-transfer event.
+*Shipped.*
+
 ### Provenance events
 An append-only audit trail distinguishing who *performed* an action (actor) from whose ownership
 or custody actually *changed* (party) — the mechanism that makes agent-executed sales (a gallery

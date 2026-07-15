@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { createUnclaimedProfile, listProfilesCreatedBy } from "../lib/profiles";
 import { getErrorMessage } from "../lib/errors";
@@ -14,13 +14,13 @@ export function CollectiveDashboardPage({ profile }: { profile: Profile }) {
   const [created, setCreated] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
 
-  async function reload() {
+  const reload = useCallback(async () => {
     setCreated(await listProfilesCreatedBy(profile.id));
-  }
+  }, [profile.id]);
 
   useEffect(() => {
     reload().finally(() => setLoading(false));
-  }, [profile.id]);
+  }, [reload]);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();

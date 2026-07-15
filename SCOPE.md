@@ -123,6 +123,16 @@ Event types defined in the `event_type` enum:
 - `dispute` — **defined, not implemented.** Lower priority, deferred deliberately.
 - `succession` — **defined, not implemented.** Lower priority, deferred deliberately.
 
+**consignments** — **implemented.** A private companion record for the commercial and operational
+terms that should not live in the public provenance event: `artwork_id`, `consignor_id`,
+`consignee_id`, asking price/currency, commission percentage, term dates, insurance
+responsibility/value/notes, a private agreement-file path, internal notes, and a status of
+`active`, `sold`, or `returned` with outcome details. Creating an active consignment also records
+the public-facing `custody_change`; returning it restores custody to the consignor. Marking a
+consignment sold does not silently change legal ownership — the ownership-transfer workflow is a
+separate, explicit action. Agreement files live in a private storage bucket and are opened using
+short-lived signed URLs. One active consignment per artwork is enforced at the database layer.
+
 **Unclaimed profiles are restricted** to being the `party` in `genesis`, `custody_change`, and
 `exhibition` events only — enforced at the RLS layer for `ownership_transfer` (requires at least
 `claimed`). This exists specifically to prevent a collective (or anyone) from executing a real
@@ -166,8 +176,10 @@ becomes the sole new controller.
 ### Worked example: a gallery sells a consigned painting
 
 1. Artist logs `genesis` for "Painting A" — artist is both owner and custodian.
-2. Artist consigns the work to Gallery G — `custody_change`, custodian artist→gallery. Ownership
-   does not change; this record is what gives the gallery standing to sell it later.
+2. Artist creates a private consignment record with Gallery G, including the asking price,
+   commission, term, insurance, and agreement. The workflow also records a `custody_change`,
+   custodian artist→gallery. Ownership does not change; this record is what gives the gallery
+   standing to sell it later.
 3. Gallery G sells the work to Collector C. This is one real transaction with two effects,
    logged as two events sharing a `transaction_group_id`:
    - `ownership_transfer`: party owner artist→collector, `actor` = Gallery G (an agent, not a
@@ -253,7 +265,7 @@ provenance and the art market actually function:
 
 ## MVP Build Plan
 
-**Screens:** artwork page (public provenance timeline) ✅, profile page (trust-tier badge, claim
+**Screens:** artwork page (public provenance timeline and private consignment manager) ✅, profile page (trust-tier badge, claim
 status, bio/website/CV, avatar) ✅, claim flow (email/social verification) ✅, role-gated
 event-logging forms ✅ (genesis/ownership_transfer/custody_change/exhibition), a collective/studio
 dashboard for managing member profiles ✅, and collector privacy settings ✅ (a "Publicly visible
@@ -294,7 +306,9 @@ profile" checkbox in the profile edit form, backed by `updateProfile`'s `isPubli
   all built. A multi-artwork catalog export (`/catalog/print`) also shipped here, ahead of
   schedule — select any set of artworks from a profile page and generate a printable/PDF
   checklist, same lightweight print-CSS-not-a-PDF-service approach as the single-artwork print
-  page. This closes out the MVP build plan — everything remaining is Phase 4+.
+  page. Private consignment management also now covers asking price, commission, terms,
+  insurance, agreement files, and sold/returned outcomes while keeping title transfer explicit.
+  This closes out the MVP build plan — everything remaining is Phase 4+.
 - **Phase 4+** — everything below, already out of scope for the MVP.
 
 ## Explicitly Out of Scope for MVP (Phase 2+)

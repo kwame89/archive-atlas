@@ -2,6 +2,10 @@ export type ProfileType = "artist" | "collective" | "gallery" | "curator" | "col
 
 export type TrustTier = "unclaimed" | "claimed" | "wallet_linked" | "entity";
 
+export type ConsignmentStatus = "active" | "sold" | "returned";
+
+export type InsuranceResponsibility = "not_recorded" | "consignor" | "consignee" | "other";
+
 export type EventType =
   | "genesis"
   | "ownership_transfer"
@@ -84,6 +88,32 @@ export interface ArtworkImage {
   created_at: string;
 }
 
+export interface Consignment {
+  id: string;
+  artwork_id: string;
+  consignor_id: string;
+  consignee_id: string;
+  actor_id: string;
+  status: ConsignmentStatus;
+  asking_price: number | null;
+  currency: string;
+  commission_percentage: number | null;
+  start_date: string;
+  end_date: string | null;
+  insurance_responsibility: InsuranceResponsibility;
+  insurance_value: number | null;
+  insurance_currency: string;
+  insurance_notes: string | null;
+  agreement_path: string | null;
+  agreement_file_name: string | null;
+  notes: string | null;
+  outcome_date: string | null;
+  sale_price: number | null;
+  outcome_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ArtworkEvent {
   id: string;
   type: EventType;
@@ -109,4 +139,3 @@ export interface ArtworkEvent {
   wallet_signed: boolean;
   created_at: string;
 }
-

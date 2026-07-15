@@ -63,15 +63,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { profileId, publicKey, timestamp, signedMessage } = await req.json();
-    if (!profileId || !publicKey || !timestamp || !signedMessage) {
-      return jsonResponse({ error: "profileId, publicKey, timestamp, and signedMessage are required" }, 400);
-    }
-
-    const skew = Math.abs(Date.now() - Date.parse(timestamp));
-    if (!Number.isFinite(skew) || skew > MAX_TIMESTAMP_SKEW_MS) {
-      return jsonResponse({ error: "Timestamp is missing, malformed, or too old — try again" }, 400);
-    }
+    const body = await req.json();
+    const action = body.action ?? "link";
+    const { profileId } = body;
+    if (!profileId) return jsonResponse({ error: "profileId is required" }, 400);
 
     // Confirm the caller actually controls this profile, using the exact
     // same auth_controls_profile check every other write path relies on —
@@ -85,7 +80,45 @@ Deno.serve(async (req) => {
       { p_profile_id: profileId }
     );
     if (authError || !controls) {
-      return jsonResponse({ error: "Not authorized to link a wallet to this profile" }, 403);
+      return jsonResponse({ error: "Not authorized to manage this profile's wallet" }, 403);
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    if (action === "disconnect") {
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("trust_tier")
+        .eq("id", profileId)
+        .single();
+      if (profileError || !profile) {
+        return jsonResponse({ error: profileError?.message ?? "Profile not found" }, 404);
+      }
+
+      const { error: disconnectError } = await supabase
+        .from("profiles")
+        .update({
+          linked_wallet: null,
+          trust_tier: profile.trust_tier === "wallet_linked" ? "claimed" : profile.trust_tier,
+        })
+        .eq("id", profileId);
+      if (disconnectError) return jsonResponse({ error: disconnectError.message }, 500);
+
+      return jsonResponse({ success: true, linkedWallet: null });
+    }
+
+    if (action !== "link") {
+      return jsonResponse({ error: "Unsupported wallet action" }, 400);
+    }
+
+    const { publicKey, timestamp, signedMessage } = body;
+    if (!publicKey || !timestamp || !signedMessage) {
+      return jsonResponse({ error: "publicKey, timestamp, and signedMessage are required" }, 400);
+    }
+
+    const skew = Math.abs(Date.now() - Date.parse(timestamp));
+    if (!Number.isFinite(skew) || skew > MAX_TIMESTAMP_SKEW_MS) {
+      return jsonResponse({ error: "Timestamp is missing, malformed, or too old — try again" }, 400);
     }
 
     // Reconstruct the expected message ourselves — never trust a
@@ -104,7 +137,6 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Signature verification failed" }, 400);
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { error: updateError } = await supabase
       .from("profiles")
       .update({ linked_wallet: publicKey, trust_tier: "wallet_linked" })

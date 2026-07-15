@@ -37,6 +37,7 @@ import {
 } from "npm:@stellar/stellar-sdk@13";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const STELLAR_ANCHOR_SECRET = Deno.env.get("STELLAR_ANCHOR_SECRET")!;
 const HORIZON_URL = "https://horizon-testnet.stellar.org";
@@ -90,6 +91,9 @@ Deno.serve(async (req) => {
     const { eventId, txHash } = await req.json();
     if (!eventId) return jsonResponse({ error: "eventId is required" }, 400);
 
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader) return jsonResponse({ error: "Authentication required" }, 401);
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const { data: event, error: fetchError } = await supabase
@@ -101,19 +105,47 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: fetchError?.message ?? "Event not found" }, 404);
     }
 
+    const supabaseAsCaller = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: controlsActor, error: authError } = await supabaseAsCaller.rpc(
+      "auth_controls_profile",
+      { p_profile_id: event.actor_id }
+    );
+    if (authError || !controlsActor) {
+      return jsonResponse({ error: "Not authorized to anchor this event" }, 403);
+    }
+
     const contentHash = await sha256Hex(canonicalEventJson(event));
+
+    // Retries are common on mobile networks. Never spend another fee or
+    // overwrite a confirmed proof when this event already has an anchor.
+    if (event.on_chain_anchor_hash) {
+      if (txHash && txHash !== event.on_chain_anchor_hash) {
+        return jsonResponse({ error: "Event is already anchored by a different transaction" }, 409);
+      }
+      return jsonResponse({
+        success: true,
+        alreadyAnchored: true,
+        stellarTxHash: event.on_chain_anchor_hash,
+      });
+    }
+
     const server = new Horizon.Server(HORIZON_URL);
+    const { data: actor, error: actorError } = await supabase
+      .from("profiles")
+      .select("linked_wallet, trust_tier")
+      .eq("id", event.actor_id)
+      .single();
+    if (actorError || !actor) {
+      return jsonResponse({ error: actorError?.message ?? "Actor profile not found" }, 404);
+    }
 
     // Mode 2: wallet-signed. The browser already built, signed, and
     // submitted this transaction with the artist's own key — verify it
     // actually anchors this event before trusting it.
     if (txHash) {
-      const { data: actor, error: actorError } = await supabase
-        .from("profiles")
-        .select("linked_wallet")
-        .eq("id", event.actor_id)
-        .single();
-      if (actorError || !actor?.linked_wallet) {
+      if (!actor.linked_wallet) {
         return jsonResponse({ error: "Actor has no linked wallet" }, 400);
       }
 
@@ -153,6 +185,16 @@ Deno.serve(async (req) => {
     }
 
     // Mode 1: platform-signed (default).
+    if (
+      actor.linked_wallet &&
+      (event.type === "genesis" || event.type === "ownership_transfer")
+    ) {
+      return jsonResponse(
+        { error: "This event requires a signature from the actor's linked wallet" },
+        409
+      );
+    }
+
     const keypair = Keypair.fromSecret(STELLAR_ANCHOR_SECRET);
     const account = await server.loadAccount(keypair.publicKey());
 

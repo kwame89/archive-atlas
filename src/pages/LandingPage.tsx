@@ -1,3 +1,6 @@
+import { ArrowRight, Fingerprint, LibraryBig, ShieldCheck, Waypoints } from "lucide-react";
+import archiveAtlasLogo from "../assets/archive-atlas-logo.png";
+import { AppHeader } from "../components/AppHeader";
 import { SignInPage } from "./SignInPage";
 
 /** Public homepage for logged-out visitors — everything a signed-in user
@@ -5,62 +8,112 @@ import { SignInPage } from "./SignInPage";
  * product before asking for an email address. */
 export function LandingPage() {
   return (
-    <div className="page-wide">
-      <header className="landing-hero">
-        <h1>Archive Atlas</h1>
-        <p className="muted">
-          Artist-first archival & provenance — the artist is the root of the record, not a field
-          in a gallery's database.
-        </p>
-      </header>
+    <div className="page-wide landing-page">
+      <AppHeader />
 
-      <p className="landing-intro">
-        Most archival tools are built around convenience for whoever's storing your work — a
-        gallery's database, a dealer's spreadsheet. Archive Atlas starts from the artist instead:
-        a durable, independently verifiable record of your work that you own and control for its
-        whole life, not just while it's in your studio.
-      </p>
+      <main>
+        <section className="landing-hero">
+          <img
+            src={archiveAtlasLogo}
+            className="landing-hero-logo"
+            alt=""
+            aria-hidden="true"
+          />
+          <div className="landing-hero-copy">
+            <p className="eyebrow">The artist-rooted record</p>
+            <h1>Archive Atlas</h1>
+            <p>
+              Preserve the work. Prove its story. Build a lasting archive that begins with the
+              artist and travels with the artwork.
+            </p>
+            <a href="#get-started" className="button-link">
+              Begin your archive
+              <ArrowRight size={17} aria-hidden="true" />
+            </a>
+          </div>
+        </section>
 
-      <div className="landing-features">
-        <div>
-          <h2 className="section-heading">Your record, your control</h2>
-          <p className="muted">
-            Create a canonical record for each piece — images, medium, dimensions, condition, a
-            suggested resale royalty — that only you (or someone you've authorized) can edit.
-            Claim your profile with just an email; no wallet required to start.
+        <section className="landing-intro" aria-label="Archive Atlas approach">
+          <p className="eyebrow">A different center of gravity</p>
+          <p>
+            Most archival tools begin with whoever stores or sells the work. Archive Atlas begins
+            with the artist, creating a durable record you control through every studio move,
+            exhibition, consignment, and collection.
           </p>
-        </div>
-        <div>
-          <h2 className="section-heading">Provenance that matches reality</h2>
-          <p className="muted">
-            Sales, consignments, loans, and exhibitions are tracked the way they actually happen —
-            a gallery selling consigned work doesn't quietly become "the owner" in the record, and
-            self-logged exhibition claims can be corroborated over time.
-          </p>
-        </div>
-        <div>
-          <h2 className="section-heading">Anchored on Stellar</h2>
-          <p className="muted">
-            Every record is hashed and anchored on Stellar, independently verifiable outside our
-            own database. Link a real wallet later and your most important attestations — a
-            piece's creation, a sale — get signed by you personally, not just recorded on your
-            behalf.
-          </p>
-        </div>
-        <div>
-          <h2 className="section-heading">Built for real use</h2>
-          <p className="muted">
-            Generate a printable catalog for a submission or show in one click, keep private notes
-            only you ever see, and credit collaborators on shared pieces.
-          </p>
-        </div>
-      </div>
+          <div className="principle-strip" aria-label="Platform principles">
+            <span>Artist controlled</span>
+            <span>Independently verifiable</span>
+            <span>Built for a lifetime</span>
+          </div>
+        </section>
 
-      <div className="landing-cta">
-        <SignInPage />
-      </div>
+        <section className="landing-feature-band" id="principles">
+          <header className="landing-section-header">
+            <p className="eyebrow">Designed around the work</p>
+            <h2>Everything your archive needs. Nothing between you and the record.</h2>
+          </header>
 
-      <p className="muted landing-footnote">
+          <div className="landing-features">
+            <article>
+              <span className="feature-icon" aria-hidden="true">
+                <LibraryBig size={22} strokeWidth={1.6} />
+              </span>
+              <p className="feature-number">01</p>
+              <h3>Your record, your control</h3>
+              <p>
+                Create the canonical record for each piece: images, medium, dimensions, condition,
+                collaborators, and private notes.
+              </p>
+            </article>
+            <article>
+              <span className="feature-icon" aria-hidden="true">
+                <Waypoints size={22} strokeWidth={1.6} />
+              </span>
+              <p className="feature-number">02</p>
+              <h3>Provenance that matches reality</h3>
+              <p>
+                Track sales, consignments, loans, and exhibitions without confusing possession,
+                representation, and ownership.
+              </p>
+            </article>
+            <article>
+              <span className="feature-icon" aria-hidden="true">
+                <Fingerprint size={22} strokeWidth={1.6} />
+              </span>
+              <p className="feature-number">03</p>
+              <h3>Proof beyond the platform</h3>
+              <p>
+                Records are hashed and anchored on Stellar, creating an independently verifiable
+                history that is not trapped in one database.
+              </p>
+            </article>
+            <article>
+              <span className="feature-icon" aria-hidden="true">
+                <ShieldCheck size={22} strokeWidth={1.6} />
+              </span>
+              <p className="feature-number">04</p>
+              <h3>Ready for real studio work</h3>
+              <p>
+                Prepare printable catalogs, document condition, credit collaborators, and keep
+                sensitive working notes private.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section className="landing-cta" id="get-started">
+          <div className="landing-cta-copy">
+            <p className="eyebrow">Open your archive</p>
+            <h2>A lasting record begins with one work.</h2>
+            <p>
+              Claim your profile with an email. No wallet or technical setup is required to begin.
+            </p>
+          </div>
+          <SignInPage />
+        </section>
+      </main>
+
+      <p className="landing-footnote">
         Early-stage build, currently anchoring on Stellar testnet — not yet handling real
         financial transactions.
       </p>
