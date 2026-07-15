@@ -38,6 +38,7 @@ import { getErrorMessage } from "../lib/errors";
 import { TransferForm } from "../components/TransferForm";
 import { ExhibitionForm } from "../components/ExhibitionForm";
 import { ConditionReportForm } from "../components/ConditionReportForm";
+import { PushToJgaButton } from "../components/PushToJgaButton";
 import { ConsignmentManager } from "../components/ConsignmentManager";
 import { ProfileSearchAdd } from "../components/ProfileSearchAdd";
 import { AppHeader } from "../components/AppHeader";
@@ -975,6 +976,13 @@ export function ArtworkPage() {
                     actorProfileId={myProfileId}
                     onComplete={loadAll}
                   />
+                </section>
+              )}
+
+              {canManage && (
+                <section className="management-panel">
+                  <h3>JGA Studio</h3>
+                  <PushToJgaButton artworkId={artwork.id} />
                 </section>
               )}
 

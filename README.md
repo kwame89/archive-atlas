@@ -45,6 +45,33 @@ src/types        TypeScript types mirroring the database schema
 supabase/migrations   SQL schema + RLS policies
 ```
 
+## Push to JGA Studio
+
+Archive Atlas is the system of record for artwork identity; the
+[JGA Studio](https://github.com/kwame89/jga-studio) storefront receives a
+one-way push of each record (title, medium, dimensions, description, tags,
+images, provenance link) via its `atlas-import` Edge Function — full contract
+in that repo's `docs/09-archive-atlas-integration.md`. Pricing/availability
+are set in JGA Studio and never touched by pushes.
+
+Root-artist controllers see a **JGA Studio** panel on each artwork page.
+Re-pushing is safe: JGA upserts by artwork id and diffs images by content
+hash.
+
+To enable it, deploy `supabase/functions/push-to-jga` and set three function
+secrets:
+
+```
+JGA_IMPORT_URL          https://<jga-project>.supabase.co/functions/v1/atlas-import
+JGA_PUSH_SHARED_SECRET  same value as ATLAS_SHARED_SECRET on the JGA side (generate once: openssl rand -hex 32)
+ATLAS_PUBLIC_URL        public origin used in provenance links, e.g. https://your-atlas-domain.com
+```
+
+On the JGA side, run its `supabase/migrations/20260715000000_atlas_import.sql`
+migration, deploy `atlas-import` with `--no-verify-jwt`, and set
+`ATLAS_SHARED_SECRET` plus `ATLAS_ROOT_ARTIST_ID` (your Atlas artist profile
+uuid — only artworks rooted at that profile are accepted).
+
 ## Where things stand
 
 Phase 0 (core product) is complete and verified: auth/claim flow, artwork records with images
