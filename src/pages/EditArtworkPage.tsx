@@ -29,6 +29,8 @@ interface ArtworkEditForm {
   signatureNotes: string;
   condition: string;
   royaltyPercentage: string;
+  artworkValue: string;
+  valueCurrency: string;
 }
 
 function formFromArtwork(artwork: Artwork): ArtworkEditForm {
@@ -52,6 +54,8 @@ function formFromArtwork(artwork: Artwork): ArtworkEditForm {
     signatureNotes: artwork.signature_notes ?? "",
     condition: artwork.condition ?? "",
     royaltyPercentage: artwork.royalty_percentage?.toString() ?? "",
+    artworkValue: artwork.artwork_value?.toString() ?? "",
+    valueCurrency: artwork.value_currency ?? "USD",
   };
 }
 
@@ -129,6 +133,11 @@ export function EditArtworkPage({ profile }: { profile: Profile }) {
       setError("Suggested resale royalty must be between 0 and 100 percent.");
       return;
     }
+    const artworkValue = numberOrNull(form.artworkValue);
+    if (artworkValue != null && artworkValue < 0) {
+      setError("Artwork value must be zero or greater.");
+      return;
+    }
 
     setSaving(true);
     setError("");
@@ -156,6 +165,8 @@ export function EditArtworkPage({ profile }: { profile: Profile }) {
         signatureNotes: textOrNull(form.signatureNotes),
         condition: textOrNull(form.condition),
         royaltyPercentage: royalty,
+        artworkValue,
+        valueCurrency: form.valueCurrency,
       });
       navigate(`/artworks/${id}`);
     } catch (err) {
@@ -279,9 +290,22 @@ export function EditArtworkPage({ profile }: { profile: Profile }) {
               <section className="artwork-edit-section">
                 <header>
                   <span>04</span>
-                  <div><h2>Signature and royalty</h2><p>Authorship marks and the voluntary resale request.</p></div>
+                  <div><h2>Value, signature and royalty</h2><p>Archival valuation, authorship marks, and the voluntary resale request.</p></div>
                 </header>
                 <div className="artwork-edit-fields">
+                  <label>
+                    <span>Artwork value</span>
+                    <input type="number" min="0" step="0.01" value={form.artworkValue} onChange={(event) => updateField("artworkValue", event.target.value)} placeholder="Optional" />
+                  </label>
+                  <label>
+                    <span>Value currency</span>
+                    <select value={form.valueCurrency} onChange={(event) => updateField("valueCurrency", event.target.value)}>
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                      <option value="GBP">GBP</option>
+                      <option value="CAD">CAD</option>
+                    </select>
+                  </label>
                   <label className="edit-checkbox-field">
                     <input type="checkbox" checked={form.isSigned} onChange={(event) => updateField("isSigned", event.target.checked)} />
                     <span>Artwork is signed</span>

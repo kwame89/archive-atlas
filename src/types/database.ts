@@ -61,6 +61,8 @@ export interface Artwork {
   signature_notes: string | null;
   condition: string | null;
   royalty_percentage: number | null;
+  artwork_value: number | null;
+  value_currency: string;
   root_artist_id: string;
   current_owner_id: string | null;
   current_custodian_id: string | null;

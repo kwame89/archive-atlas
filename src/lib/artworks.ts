@@ -23,6 +23,9 @@ export interface CreateArtworkInput {
   condition?: string;
   /** Suggested resale royalty (%), unenforced — see updateRoyaltyPercentage. */
   royaltyPercentage?: number;
+  /** Artist-maintained archival value. This is not a public sale price. */
+  artworkValue?: number;
+  valueCurrency?: string;
   /** When the work was actually created, if different from today (e.g.
    * archiving an older piece) — becomes the genesis event's occurred_at. */
   dateCreated?: string;
@@ -50,6 +53,8 @@ export interface UpdateArtworkDetailsInput {
   signatureNotes: string | null;
   condition: string | null;
   royaltyPercentage: number | null;
+  artworkValue: number | null;
+  valueCurrency: string;
 }
 
 /**
@@ -90,6 +95,8 @@ export async function createArtwork(
       signature_notes: input.signatureNotes || null,
       condition: input.condition || null,
       royalty_percentage: input.royaltyPercentage ?? null,
+      artwork_value: input.artworkValue ?? null,
+      value_currency: input.valueCurrency ?? "USD",
       root_artist_id: rootArtistId,
       current_owner_id: rootArtistId,
       current_custodian_id: rootArtistId,
@@ -150,6 +157,8 @@ export async function updateArtworkDetails(
       signature_notes: input.signatureNotes,
       condition: input.condition,
       royalty_percentage: input.royaltyPercentage,
+      artwork_value: input.artworkValue,
+      value_currency: input.valueCurrency,
     })
     .eq("id", artworkId)
     .select()

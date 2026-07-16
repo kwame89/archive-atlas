@@ -33,6 +33,8 @@ interface ArtworkDraft {
   signatureNotes: string;
   condition: string;
   royaltyPercentage: string;
+  artworkValue: string;
+  valueCurrency: string;
   collaborators: CollaboratorDraft[];
   privateNotes: string;
   dateCreated: string;
@@ -59,6 +61,8 @@ function createInitialDraft(): ArtworkDraft {
     signatureNotes: "",
     condition: "",
     royaltyPercentage: "",
+    artworkValue: "",
+    valueCurrency: "USD",
     collaborators: [],
     privateNotes: "",
     dateCreated: new Date().toISOString().slice(0, 10),
@@ -93,6 +97,8 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
     signatureNotes,
     condition,
     royaltyPercentage,
+    artworkValue,
+    valueCurrency,
     collaborators,
     privateNotes,
     dateCreated,
@@ -118,6 +124,14 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
     setSubmitting(true);
     setError("");
     try {
+      const parsedArtworkValue = artworkValue.trim() ? Number(artworkValue) : undefined;
+      if (
+        parsedArtworkValue !== undefined &&
+        (!Number.isFinite(parsedArtworkValue) || parsedArtworkValue < 0)
+      ) {
+        throw new Error("Artwork value must be zero or greater.");
+      }
+
       const rootArtistId = onBehalfOfProfile?.id ?? profile.id;
       const artwork = await createArtwork(
         rootArtistId,
@@ -146,6 +160,8 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
           signatureNotes: signatureNotes || undefined,
           condition: condition || undefined,
           royaltyPercentage: royaltyPercentage ? Number(royaltyPercentage) : undefined,
+          artworkValue: parsedArtworkValue,
+          valueCurrency,
           dateCreated: dateCreated || undefined,
           collaboratorIds: collaborators.map((c) => c.id),
         },
@@ -347,6 +363,36 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
             </option>
           ))}
         </select>
+
+        <h2 className="section-heading">Value &amp; stewardship</h2>
+
+        <label htmlFor="artworkValue">Artwork value</label>
+        <div className="dimension-row">
+          <select
+            id="valueCurrency"
+            aria-label="Artwork value currency"
+            value={valueCurrency}
+            onChange={(e) => updateDraft("valueCurrency", e.target.value)}
+          >
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+            <option value="GBP">GBP</option>
+            <option value="CAD">CAD</option>
+          </select>
+          <input
+            id="artworkValue"
+            type="number"
+            min="0"
+            step="0.01"
+            value={artworkValue}
+            onChange={(e) => updateDraft("artworkValue", e.target.value)}
+            placeholder="Optional"
+          />
+        </div>
+        <p className="muted">
+          Optional archival value for insurance and recordkeeping. This does not set the public
+          sale price in JGA Studio.
+        </p>
 
         <label htmlFor="royaltyPercentage">Suggested resale royalty (%)</label>
         <input

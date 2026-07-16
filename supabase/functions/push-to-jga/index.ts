@@ -1,5 +1,5 @@
 // Pushes an artwork's canonical record (identity fields + image manifest +
-// public provenance URL) to JGA Studio's atlas-import Edge Function, per the
+// read-only provenance snapshot) to JGA Studio's atlas-import Edge Function, per the
 // integration spec in the jga-studio repo (docs/09-archive-atlas-integration.md).
 //
 // Archive Atlas stays the system of record for artwork identity and
@@ -34,6 +34,17 @@ const ATLAS_PUBLIC_URL = (Deno.env.get("ATLAS_PUBLIC_URL") ?? "").replace(/\/+$/
 
 const MAX_ARTWORKS_PER_PUSH = 30;
 
+const EVENT_LABELS: Record<string, string> = {
+  genesis: "Created",
+  ownership_transfer: "Ownership transferred",
+  custody_change: "Custody changed",
+  exhibition: "Exhibited",
+  claim: "Profile claimed",
+  condition_report: "Condition report",
+  dispute: "Disputed",
+  succession: "Succession",
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -58,6 +69,17 @@ async function hmacSha256Hex(secret: string, message: string): Promise<string> {
   return Array.from(new Uint8Array(sig))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+}
+
+function getProof(event: Record<string, unknown>) {
+  if (event.wallet_signed) return { kind: "signed", label: "Artist signed" };
+  if (event.corroborated_by) return { kind: "corroborated", label: "Corroborated" };
+  if (event.on_chain_anchor_hash) return { kind: "anchored", label: "Platform anchored" };
+  return { kind: "recorded", label: "Recorded claim" };
+}
+
+function nameFor(names: Map<string, string>, id: unknown): string | null {
+  return typeof id === "string" ? names.get(id) ?? "Unknown profile" : null;
 }
 
 Deno.serve(async (req) => {
@@ -242,6 +264,44 @@ Deno.serve(async (req) => {
       .order("created_at", { ascending: true });
     if (imagesError) return jsonResponse({ error: imagesError.message }, 500);
 
+    const { data: provenanceRows, error: provenanceError } = await supabase
+      .from("events")
+      .select(
+        "id, artwork_id, type, actor_id, from_party_id, to_party_id, occurred_at, on_chain_anchor_hash, price, currency, notes, exhibition_title, exhibition_venue, exhibition_location, exhibition_end_date, corroborated_by, condition_rating, wallet_signed"
+      )
+      .in("artwork_id", artworkIds)
+      .order("occurred_at", { ascending: true });
+    if (provenanceError) return jsonResponse({ error: provenanceError.message }, 500);
+
+    const provenanceProfileIds = [
+      ...new Set(
+        (provenanceRows ?? []).flatMap((event) =>
+          [
+            event.actor_id,
+            event.from_party_id,
+            event.to_party_id,
+            event.corroborated_by,
+          ].filter((value): value is string => typeof value === "string")
+        )
+      ),
+    ];
+    const { data: provenanceProfiles, error: provenanceProfilesError } =
+      provenanceProfileIds.length > 0
+        ? await supabase
+            .from("profiles")
+            .select("id, display_name, is_public")
+            .in("id", provenanceProfileIds)
+        : { data: [], error: null };
+    if (provenanceProfilesError) {
+      return jsonResponse({ error: provenanceProfilesError.message }, 500);
+    }
+    const provenanceNames = new Map(
+      (provenanceProfiles ?? []).map((profile) => [
+        profile.id,
+        profile.is_public ? profile.display_name : "Private collector",
+      ])
+    );
+
     const items = artworks.map((a) => ({
       atlas_artwork_id: a.id,
       root_artist_id: a.root_artist_id,
@@ -256,6 +316,31 @@ Deno.serve(async (req) => {
       art_type: a.art_type ?? null,
       subject_matter: a.subject_matter ?? null,
       provenance_url: `${ATLAS_PUBLIC_URL}/artworks/${a.id}`,
+      provenance_events: (provenanceRows ?? [])
+        .filter((event) => event.artwork_id === a.id)
+        .map((event) => {
+          const proof = getProof(event);
+          return {
+            id: event.id,
+            type: event.type,
+            label: EVENT_LABELS[event.type] ?? "Archive event",
+            occurred_at: event.occurred_at,
+            actor_name: nameFor(provenanceNames, event.actor_id),
+            from_party_name: nameFor(provenanceNames, event.from_party_id),
+            to_party_name: nameFor(provenanceNames, event.to_party_id),
+            price: event.price ?? null,
+            currency: event.currency ?? null,
+            notes: event.notes ?? null,
+            exhibition_title: event.exhibition_title ?? null,
+            exhibition_venue: event.exhibition_venue ?? null,
+            exhibition_location: event.exhibition_location ?? null,
+            exhibition_end_date: event.exhibition_end_date ?? null,
+            condition_rating: event.condition_rating ?? null,
+            proof_kind: proof.kind,
+            proof_label: proof.label,
+            anchor_hash: event.on_chain_anchor_hash ?? null,
+          };
+        }),
       images: (imageRows ?? [])
         .filter((img) => img.artwork_id === a.id)
         .map((img, i) => ({

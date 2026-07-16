@@ -59,6 +59,18 @@ const EVENT_LABELS: Record<ArtworkEvent["type"], string> = {
   succession: "Succession",
 };
 
+function formatArtworkValue(value: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 2,
+    }).format(value);
+  } catch {
+    return `${currency} ${value.toLocaleString()}`;
+  }
+}
+
 type ProofKind = "signed" | "corroborated" | "anchored" | "recorded";
 
 function getProofStatus(event: ArtworkEvent): {
@@ -925,6 +937,14 @@ export function ArtworkPage() {
                 <div>
                   <dt>Condition</dt>
                   <dd>{artwork.condition ?? "Not recorded"}</dd>
+                </div>
+                <div>
+                  <dt>Artwork value</dt>
+                  <dd>
+                    {artwork.artwork_value != null
+                      ? `${formatArtworkValue(artwork.artwork_value, artwork.value_currency)} · archival record`
+                      : "Not recorded"}
+                  </dd>
                 </div>
                 <div>
                   <dt>Suggested resale royalty</dt>
