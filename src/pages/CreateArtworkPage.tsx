@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Images } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { createArtwork, saveArtworkPrivateNotes, uploadArtworkImages } from "../lib/artworks";
 import { getProfile } from "../lib/profiles";
 import { getErrorMessage } from "../lib/errors";
 import { useLocalDraft } from "../lib/useLocalDraft";
+import { ArtworkImageUploader } from "../components/ArtworkImageUploader";
 import { ProfileSearchAdd } from "../components/ProfileSearchAdd";
 import type { Profile } from "../types/database";
 
@@ -97,7 +99,6 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
   } = draft;
   const [images, setImages] = useState<File[]>([]);
   const [primaryIndex, setPrimaryIndex] = useState(0);
-  const [previews, setPreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -106,22 +107,11 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
   }
 
   useEffect(() => {
-    const urls = images.map((file) => URL.createObjectURL(file));
-    setPreviews(urls);
-    return () => urls.forEach((url) => URL.revokeObjectURL(url));
-  }, [images]);
-
-  useEffect(() => {
     if (!onBehalfOfId) return;
     getProfile(onBehalfOfId)
       .then(setOnBehalfOfProfile)
       .catch((err) => setOnBehalfOfError(getErrorMessage(err)));
   }, [onBehalfOfId]);
-
-  function handleFilesSelected(files: File[]) {
-    setImages(files);
-    setPrimaryIndex(0);
-  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -189,7 +179,13 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
 
   return (
     <div className="card">
-      <h1>New artwork</h1>
+      <div className="create-artwork-heading">
+        <h1>New artwork</h1>
+        <Link to="/artworks/batch" className="create-artwork-batch-link">
+          <Images size={16} aria-hidden="true" />
+          Batch add
+        </Link>
+      </div>
       {onBehalfOfId && onBehalfOfProfile ? (
         <p className="muted">
           Logging historical work on behalf of <strong>{onBehalfOfProfile.display_name}</strong>{" "}
@@ -252,35 +248,12 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
           placeholder="Shown publicly on the artwork's page"
         />
 
-        <label htmlFor="images">Images</label>
-        <input
-          id="images"
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={(e) => handleFilesSelected(Array.from(e.target.files ?? []))}
+        <ArtworkImageUploader
+          files={images}
+          primaryIndex={primaryIndex}
+          onFilesChange={setImages}
+          onPrimaryIndexChange={setPrimaryIndex}
         />
-        {previews.length > 0 && (
-          <>
-            <p className="muted">Choose which one is the primary image:</p>
-            <div className="thumbnail-row">
-              {previews.map((src, i) => (
-                <label key={src} className="thumbnail">
-                  <img src={src} alt="" />
-                  <span>
-                    <input
-                      type="radio"
-                      name="primaryImage"
-                      checked={primaryIndex === i}
-                      onChange={() => setPrimaryIndex(i)}
-                    />{" "}
-                    Primary
-                  </span>
-                </label>
-              ))}
-            </div>
-          </>
-        )}
 
         <h2 className="section-heading">Physical details</h2>
 

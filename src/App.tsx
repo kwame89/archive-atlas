@@ -8,6 +8,7 @@ import { LandingPage } from "./pages/LandingPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { HomePage } from "./pages/HomePage";
 import { CreateArtworkPage } from "./pages/CreateArtworkPage";
+import { BatchArtworkPage } from "./pages/BatchArtworkPage";
 import { EditArtworkPage } from "./pages/EditArtworkPage";
 import { ArtworkPage } from "./pages/ArtworkPage";
 import { ArtworkPrintPage } from "./pages/ArtworkPrintPage";
@@ -80,6 +81,12 @@ function App() {
           <Route
             path="/artworks/new"
             element={<RequireProfile>{(profile) => <CreateArtworkPage profile={profile} />}</RequireProfile>}
+          />
+          <Route
+            path="/artworks/batch"
+            element={
+              <RequireProfile>{(profile) => <BatchArtworkPage profile={profile} />}</RequireProfile>
+            }
           />
           <Route
             path="/collective"

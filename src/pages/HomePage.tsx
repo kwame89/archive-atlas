@@ -5,6 +5,7 @@ import {
   CalendarPlus,
   CheckCircle2,
   CircleAlert,
+  Images,
   Plus,
   Layers,
   Search,
@@ -163,10 +164,16 @@ export function HomePage({ profile }: { profile: Profile }) {
               activity.
             </p>
           </div>
-          <Link to="/artworks/new" className="button-link dashboard-add-button">
-            <Plus size={18} aria-hidden="true" />
-            Add artwork
-          </Link>
+          <div className="dashboard-intro-actions">
+            <Link to="/artworks/new" className="button-link dashboard-add-button">
+              <Plus size={18} aria-hidden="true" />
+              Add artwork
+            </Link>
+            <Link to="/artworks/batch" className="dashboard-batch-button">
+              <Images size={17} aria-hidden="true" />
+              Batch add
+            </Link>
+          </div>
         </section>
 
         {loading && <p className="muted dashboard-loading">Loading your archive…</p>}
