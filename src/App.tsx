@@ -27,20 +27,21 @@ function RequireProfile({
   loggedOutFallback?: ReactNode;
 }) {
   const { session, loading } = useAuth();
+  const authUserId = session?.user.id ?? null;
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
-    if (!session) {
+    if (!authUserId) {
       setProfile(null);
       setProfileLoading(false);
       return;
     }
     setProfileLoading(true);
-    getMyProfile(session.user.id)
+    getMyProfile(authUserId)
       .then(setProfile)
       .finally(() => setProfileLoading(false));
-  }, [session]);
+  }, [authUserId]);
 
   if (loading || (session && profileLoading)) {
     return (

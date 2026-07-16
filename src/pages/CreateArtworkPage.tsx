@@ -3,10 +3,65 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { createArtwork, saveArtworkPrivateNotes, uploadArtworkImages } from "../lib/artworks";
 import { getProfile } from "../lib/profiles";
 import { getErrorMessage } from "../lib/errors";
+import { useLocalDraft } from "../lib/useLocalDraft";
 import { ProfileSearchAdd } from "../components/ProfileSearchAdd";
 import type { Profile } from "../types/database";
 
 const CONDITION_OPTIONS = ["Excellent", "Good", "Fair", "Poor", "Needs restoration"];
+
+type CollaboratorDraft = Pick<Profile, "id" | "display_name">;
+
+interface ArtworkDraft {
+  title: string;
+  description: string;
+  medium: string;
+  height: string;
+  width: string;
+  depth: string;
+  dimensionsOverride: string;
+  year: string;
+  isCirca: boolean;
+  dateDisplayOverride: string;
+  editionNumber: string;
+  editionTotal: string;
+  subjectMatter: string;
+  artType: string;
+  tags: string;
+  isSigned: boolean;
+  signatureNotes: string;
+  condition: string;
+  royaltyPercentage: string;
+  collaborators: CollaboratorDraft[];
+  privateNotes: string;
+  dateCreated: string;
+}
+
+function createInitialDraft(): ArtworkDraft {
+  return {
+    title: "",
+    description: "",
+    medium: "",
+    height: "",
+    width: "",
+    depth: "",
+    dimensionsOverride: "",
+    year: "",
+    isCirca: false,
+    dateDisplayOverride: "",
+    editionNumber: "",
+    editionTotal: "",
+    subjectMatter: "",
+    artType: "",
+    tags: "",
+    isSigned: false,
+    signatureNotes: "",
+    condition: "",
+    royaltyPercentage: "",
+    collaborators: [],
+    privateNotes: "",
+    dateCreated: new Date().toISOString().slice(0, 10),
+  };
+}
 
 export function CreateArtworkPage({ profile }: { profile: Profile }) {
   const navigate = useNavigate();
@@ -14,33 +69,41 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
   const onBehalfOfId = searchParams.get("onBehalfOf");
   const [onBehalfOfProfile, setOnBehalfOfProfile] = useState<Profile | null>(null);
   const [onBehalfOfError, setOnBehalfOfError] = useState("");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [medium, setMedium] = useState("");
-  const [height, setHeight] = useState("");
-  const [width, setWidth] = useState("");
-  const [depth, setDepth] = useState("");
-  const [dimensionsOverride, setDimensionsOverride] = useState("");
-  const [year, setYear] = useState("");
-  const [isCirca, setIsCirca] = useState(false);
-  const [dateDisplayOverride, setDateDisplayOverride] = useState("");
-  const [editionNumber, setEditionNumber] = useState("");
-  const [editionTotal, setEditionTotal] = useState("");
-  const [subjectMatter, setSubjectMatter] = useState("");
-  const [artType, setArtType] = useState("");
-  const [tags, setTags] = useState("");
-  const [isSigned, setIsSigned] = useState(false);
-  const [signatureNotes, setSignatureNotes] = useState("");
-  const [condition, setCondition] = useState("");
-  const [royaltyPercentage, setRoyaltyPercentage] = useState("");
-  const [collaborators, setCollaborators] = useState<Profile[]>([]);
-  const [privateNotes, setPrivateNotes] = useState("");
-  const [dateCreated, setDateCreated] = useState(() => new Date().toISOString().slice(0, 10));
+  const draftKey = `archive-atlas:artwork-draft:${profile.id}:${onBehalfOfId ?? "self"}`;
+  const [draft, setDraft, clearDraft] = useLocalDraft(draftKey, createInitialDraft);
+  const {
+    title,
+    description,
+    medium,
+    height,
+    width,
+    depth,
+    dimensionsOverride,
+    year,
+    isCirca,
+    dateDisplayOverride,
+    editionNumber,
+    editionTotal,
+    subjectMatter,
+    artType,
+    tags,
+    isSigned,
+    signatureNotes,
+    condition,
+    royaltyPercentage,
+    collaborators,
+    privateNotes,
+    dateCreated,
+  } = draft;
   const [images, setImages] = useState<File[]>([]);
   const [primaryIndex, setPrimaryIndex] = useState(0);
   const [previews, setPreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  function updateDraft<K extends keyof ArtworkDraft>(field: K, value: ArtworkDraft[K]) {
+    setDraft((current) => ({ ...current, [field]: value }));
+  }
 
   useEffect(() => {
     const urls = images.map((file) => URL.createObjectURL(file));
@@ -110,11 +173,13 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
         try {
           await uploadArtworkImages(artwork.id, images, primaryIndex);
         } catch (uploadErr) {
+          clearDraft();
           setError(`Artwork created, but images failed to upload: ${getErrorMessage(uploadErr)}`);
           navigate(`/artworks/${artwork.id}`);
           return;
         }
       }
+      clearDraft();
       navigate(`/artworks/${artwork.id}`);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -139,7 +204,12 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
       {onBehalfOfError && <p className="error">{onBehalfOfError}</p>}
       <form onSubmit={handleSubmit}>
         <label htmlFor="title">Title</label>
-        <input id="title" required value={title} onChange={(e) => setTitle(e.target.value)} />
+        <input
+          id="title"
+          required
+          value={title}
+          onChange={(e) => updateDraft("title", e.target.value)}
+        />
 
         <label>Co-artists (for collaborative pieces)</label>
         {collaborators.length > 0 && (
@@ -150,7 +220,12 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
                 <button
                   type="button"
                   className="secondary"
-                  onClick={() => setCollaborators(collaborators.filter((x) => x.id !== c.id))}
+                  onClick={() =>
+                    updateDraft(
+                      "collaborators",
+                      collaborators.filter((x) => x.id !== c.id)
+                    )
+                  }
                 >
                   Remove
                 </button>
@@ -160,7 +235,12 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
         )}
         <ProfileSearchAdd
           excludeIds={collaborators.map((c) => c.id)}
-          onAdd={(p) => setCollaborators([...collaborators, p])}
+          onAdd={(p) =>
+            updateDraft("collaborators", [
+              ...collaborators,
+              { id: p.id, display_name: p.display_name },
+            ])
+          }
           placeholder="Search for a co-artist…"
         />
 
@@ -168,7 +248,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
         <textarea
           id="description"
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={(e) => updateDraft("description", e.target.value)}
           placeholder="Shown publicly on the artwork's page"
         />
 
@@ -208,7 +288,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
         <input
           id="medium"
           value={medium}
-          onChange={(e) => setMedium(e.target.value)}
+          onChange={(e) => updateDraft("medium", e.target.value)}
           placeholder="e.g. Oil on canvas"
         />
 
@@ -217,19 +297,19 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
           <input
             type="number"
             value={height}
-            onChange={(e) => setHeight(e.target.value)}
+            onChange={(e) => updateDraft("height", e.target.value)}
             placeholder="H"
           />
           <input
             type="number"
             value={width}
-            onChange={(e) => setWidth(e.target.value)}
+            onChange={(e) => updateDraft("width", e.target.value)}
             placeholder="W"
           />
           <input
             type="number"
             value={depth}
-            onChange={(e) => setDepth(e.target.value)}
+            onChange={(e) => updateDraft("depth", e.target.value)}
             placeholder="D (optional)"
           />
         </div>
@@ -238,7 +318,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
         <input
           id="dimensionsOverride"
           value={dimensionsOverride}
-          onChange={(e) => setDimensionsOverride(e.target.value)}
+          onChange={(e) => updateDraft("dimensionsOverride", e.target.value)}
           placeholder={'For irregular cases, e.g. "Variable dimensions"'}
         />
 
@@ -246,7 +326,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
         <input
           id="subjectMatter"
           value={subjectMatter}
-          onChange={(e) => setSubjectMatter(e.target.value)}
+          onChange={(e) => updateDraft("subjectMatter", e.target.value)}
           placeholder="Landscape, Still Life, Portrait, etc."
         />
 
@@ -254,7 +334,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
         <input
           id="artType"
           value={artType}
-          onChange={(e) => setArtType(e.target.value)}
+          onChange={(e) => updateDraft("artType", e.target.value)}
           placeholder="Painting, Sculpture, Photography, etc."
         />
 
@@ -262,7 +342,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
         <input
           id="tags"
           value={tags}
-          onChange={(e) => setTags(e.target.value)}
+          onChange={(e) => updateDraft("tags", e.target.value)}
           placeholder="Comma-separated"
         />
 
@@ -271,18 +351,22 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
             id="isSigned"
             type="checkbox"
             checked={isSigned}
-            onChange={(e) => setIsSigned(e.target.checked)}
+            onChange={(e) => updateDraft("isSigned", e.target.checked)}
           />{" "}
           Signed
         </label>
         <input
           value={signatureNotes}
-          onChange={(e) => setSignatureNotes(e.target.value)}
+          onChange={(e) => updateDraft("signatureNotes", e.target.value)}
           placeholder="Signature location/notes"
         />
 
         <label htmlFor="condition">Condition</label>
-        <select id="condition" value={condition} onChange={(e) => setCondition(e.target.value)}>
+        <select
+          id="condition"
+          value={condition}
+          onChange={(e) => updateDraft("condition", e.target.value)}
+        >
           <option value="">Not recorded</option>
           {CONDITION_OPTIONS.map((c) => (
             <option key={c} value={c}>
@@ -299,7 +383,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
           max="100"
           step="0.1"
           value={royaltyPercentage}
-          onChange={(e) => setRoyaltyPercentage(e.target.value)}
+          onChange={(e) => updateDraft("royaltyPercentage", e.target.value)}
           placeholder="e.g. 5"
         />
         <p className="muted">
@@ -315,7 +399,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
           id="dateCreated"
           type="date"
           value={dateCreated}
-          onChange={(e) => setDateCreated(e.target.value)}
+          onChange={(e) => updateDraft("dateCreated", e.target.value)}
         />
         <p className="muted">
           When the work was actually made — not necessarily today, if you're archiving older
@@ -327,7 +411,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
           id="year"
           type="number"
           value={year}
-          onChange={(e) => setYear(e.target.value)}
+          onChange={(e) => updateDraft("year", e.target.value)}
           placeholder="2026"
         />
 
@@ -336,7 +420,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
             id="isCirca"
             type="checkbox"
             checked={isCirca}
-            onChange={(e) => setIsCirca(e.target.checked)}
+            onChange={(e) => updateDraft("isCirca", e.target.checked)}
           />{" "}
           Show year as "circa"
         </label>
@@ -345,7 +429,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
         <input
           id="dateDisplayOverride"
           value={dateDisplayOverride}
-          onChange={(e) => setDateDisplayOverride(e.target.value)}
+          onChange={(e) => updateDraft("dateDisplayOverride", e.target.value)}
           placeholder={'For imprecise dates, e.g. "1970s" or "2007-2010"'}
         />
 
@@ -354,7 +438,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
           id="editionNumber"
           type="number"
           value={editionNumber}
-          onChange={(e) => setEditionNumber(e.target.value)}
+          onChange={(e) => updateDraft("editionNumber", e.target.value)}
         />
 
         <label htmlFor="editionTotal">Edition total (if applicable)</label>
@@ -362,7 +446,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
           id="editionTotal"
           type="number"
           value={editionTotal}
-          onChange={(e) => setEditionTotal(e.target.value)}
+          onChange={(e) => updateDraft("editionTotal", e.target.value)}
         />
 
         <h2 className="section-heading">Private notes</h2>
@@ -370,14 +454,21 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
         <textarea
           id="privateNotes"
           value={privateNotes}
-          onChange={(e) => setPrivateNotes(e.target.value)}
+          onChange={(e) => updateDraft("privateNotes", e.target.value)}
           placeholder="Only visible to you and other controllers of your profile"
         />
 
         <button type="submit" disabled={submitting}>
           {submitting ? "Creating…" : "Create artwork"}
         </button>
-        <button type="button" className="secondary" onClick={() => navigate("/")}>
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => {
+            clearDraft();
+            navigate("/");
+          }}
+        >
           Cancel
         </button>
         {error && <p className="error">{error}</p>}
