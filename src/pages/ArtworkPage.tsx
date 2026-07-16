@@ -15,7 +15,7 @@ import {
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../lib/authContext";
 import { getMyProfile, canActFor, getWalletInfo } from "../lib/profiles";
-import { signAndAnchorEvent } from "../lib/stellarWallet";
+import { signAndAnchorEvent, explorerBaseForNetwork } from "../lib/stellarWallet";
 import {
   addCollaborators,
   corroborateExhibition,
@@ -876,7 +876,7 @@ export function ArtworkPage() {
                             <p>{proof.description}</p>
                             {event.on_chain_anchor_hash && (
                               <a
-                                href={`https://stellar.expert/explorer/testnet/tx/${event.on_chain_anchor_hash}`}
+                                href={`${explorerBaseForNetwork(event.anchor_network)}/tx/${event.on_chain_anchor_hash}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >

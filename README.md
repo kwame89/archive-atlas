@@ -82,6 +82,33 @@ migration, deploy `atlas-import` with `--no-verify-jwt`, and set
 `ATLAS_SHARED_SECRET` plus `ATLAS_ROOT_ARTIST_ID` (your Atlas artist profile
 uuid — only artworks rooted at that profile are accepted).
 
+## Mainnet cutover (Stellar testnet → public network)
+
+The network is config, not code. Everything defaults to **testnet**; flipping
+to mainnet is four steps, done together:
+
+1. **Create and fund the platform anchor account (you, manually).** Generate a
+   fresh keypair in any Stellar wallet, send it ~10 XLM from an exchange
+   (1 XLM covers the account reserve; each anchor costs 0.00001 XLM, so 10 XLM
+   funds roughly 900,000 anchors). Never reuse the testnet key.
+2. **Function secrets** on `anchor-event`:
+   `STELLAR_NETWORK=mainnet` and `STELLAR_ANCHOR_SECRET=<the new mainnet secret key>`.
+3. **Site env** on Vercel: `VITE_STELLAR_NETWORK=mainnet`, then redeploy.
+4. **Run `supabase/migrations/0023_anchor_network.sql`** (labels all existing
+   anchors as testnet).
+
+What changes at cutover: new anchors land on the public network and explorer
+links point at `stellar.expert/explorer/public`; historical testnet anchors
+keep their testnet labels and links (history is never relabeled). Friendbot
+funding is disabled on mainnet — a collector or artist linking an unfunded
+wallet is told to fund it themselves (~2 XLM) rather than the platform ever
+touching real funds. Artists' wallets (Freighter etc.) must be switched to
+the Public network to sign.
+
+Both sides must flip together: a mainnet site against a testnet function (or
+vice versa) will fail signature verification on wallet-signed anchors —
+that's intentional.
+
 ## Where things stand
 
 Phase 0 (core product) is complete and verified: auth/claim flow, artwork records with images

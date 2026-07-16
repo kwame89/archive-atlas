@@ -40,8 +40,16 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const STELLAR_ANCHOR_SECRET = Deno.env.get("STELLAR_ANCHOR_SECRET")!;
-const HORIZON_URL = "https://horizon-testnet.stellar.org";
-const NETWORK_PASSPHRASE = Networks.TESTNET;
+// Network selection: set the STELLAR_NETWORK function secret to "mainnet"
+// to anchor on the public network (STELLAR_ANCHOR_SECRET must then be a
+// funded MAINNET account). Defaults to testnet. Must be flipped together
+// with the site's VITE_STELLAR_NETWORK (see README > Mainnet cutover).
+const STELLAR_NETWORK = Deno.env.get("STELLAR_NETWORK") === "mainnet" ? "mainnet" : "testnet";
+const HORIZON_URL =
+  STELLAR_NETWORK === "mainnet"
+    ? "https://horizon.stellar.org"
+    : "https://horizon-testnet.stellar.org";
+const NETWORK_PASSPHRASE = STELLAR_NETWORK === "mainnet" ? Networks.PUBLIC : Networks.TESTNET;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -177,7 +185,7 @@ Deno.serve(async (req) => {
 
       const { error: updateError } = await supabase
         .from("events")
-        .update({ on_chain_anchor_hash: txHash, wallet_signed: true })
+        .update({ on_chain_anchor_hash: txHash, wallet_signed: true, anchor_network: STELLAR_NETWORK })
         .eq("id", eventId);
       if (updateError) return jsonResponse({ error: updateError.message }, 500);
 
@@ -216,7 +224,7 @@ Deno.serve(async (req) => {
 
     const { error: updateError } = await supabase
       .from("events")
-      .update({ on_chain_anchor_hash: result.hash })
+      .update({ on_chain_anchor_hash: result.hash, anchor_network: STELLAR_NETWORK })
       .eq("id", eventId);
     if (updateError) return jsonResponse({ error: updateError.message }, 500);
 

@@ -147,6 +147,9 @@ export interface ArtworkEvent {
   transaction_group_id: string | null;
   occurred_at: string;
   on_chain_anchor_hash: string | null;
+  /** Which Stellar network the anchor lives on ("testnet" | "mainnet");
+   * null on pre-migration rows, which are all testnet. */
+  anchor_network: string | null;
   price: number | null;
   currency: string | null;
   notes: string | null;

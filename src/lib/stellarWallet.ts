@@ -14,8 +14,28 @@ import { HanaModule } from "@creit.tech/stellar-wallets-kit/modules/hana";
 import { supabase } from "./supabaseClient";
 import { getErrorMessage } from "./errors";
 
-const HORIZON_URL = "https://horizon-testnet.stellar.org";
-const NETWORK_PASSPHRASE = Networks.TESTNET;
+// Network selection (testnet → mainnet cutover): set VITE_STELLAR_NETWORK to
+// "mainnet" in the deployment env to run against the public network. The
+// server side reads its own STELLAR_NETWORK function secret — the two must
+// be flipped together (see README > Mainnet cutover).
+export type StellarNetwork = "testnet" | "mainnet";
+export const STELLAR_NETWORK: StellarNetwork =
+  import.meta.env.VITE_STELLAR_NETWORK === "mainnet" ? "mainnet" : "testnet";
+
+export const STELLAR_EXPERT_BASE = `https://stellar.expert/explorer/${
+  STELLAR_NETWORK === "mainnet" ? "public" : "testnet"
+}`;
+
+export function explorerBaseForNetwork(network: string | null | undefined): string {
+  return `https://stellar.expert/explorer/${network === "mainnet" ? "public" : "testnet"}`;
+}
+
+const HORIZON_URL =
+  STELLAR_NETWORK === "mainnet"
+    ? "https://horizon.stellar.org"
+    : "https://horizon-testnet.stellar.org";
+const NETWORK_PASSPHRASE =
+  STELLAR_NETWORK === "mainnet" ? Networks.PUBLIC : Networks.TESTNET;
 const FRIENDBOT_URL = "https://friendbot.stellar.org";
 
 // Initialize wallet kit once at module load
@@ -126,6 +146,13 @@ async function ensureFunded(server: Horizon.Server, publicKey: string): Promise<
   try {
     await server.loadAccount(publicKey);
   } catch {
+    // Friendbot only exists on testnet. On mainnet an unfunded account is
+    // the wallet owner's responsibility — never touch real funds for them.
+    if (STELLAR_NETWORK === "mainnet") {
+      throw new Error(
+        "This Stellar account isn't active on the public network yet. Send it a small amount of XLM (about 2 XLM covers the reserve) from an exchange or another wallet, then try again."
+      );
+    }
     const res = await fetch(`${FRIENDBOT_URL}?addr=${encodeURIComponent(publicKey)}`);
     if (!res.ok) throw new Error("Could not fund your testnet wallet via Friendbot");
   }
@@ -234,7 +261,7 @@ export async function signAndAnchorEvent(
     // failed. stellar-sdk doesn't throw for this case. Point at Stellar
     // Expert rather than guessing at the XDR-encoded reason ourselves.
     throw new Error(
-      `Transaction was not successful on-chain. Inspect it at https://stellar.expert/explorer/testnet/tx/${result.hash}`
+      `Transaction was not successful on-chain. Inspect it at ${STELLAR_EXPERT_BASE}/tx/${result.hash}`
     );
   }
 

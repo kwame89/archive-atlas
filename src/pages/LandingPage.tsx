@@ -2,6 +2,7 @@ import { ArrowRight, Fingerprint, LibraryBig, ShieldCheck, Waypoints } from "luc
 import archiveAtlasLogo from "../assets/archive-atlas-logo.png";
 import { AppHeader } from "../components/AppHeader";
 import { SignInPage } from "./SignInPage";
+import { STELLAR_NETWORK } from "../lib/stellarWallet";
 
 /** Public homepage for logged-out visitors — everything a signed-in user
  * sees at "/" lives in HomePage.tsx instead; this is what explains the
@@ -114,8 +115,9 @@ export function LandingPage() {
       </main>
 
       <p className="landing-footnote">
-        Early-stage build, currently anchoring on Stellar testnet — not yet handling real
-        financial transactions.
+        {STELLAR_NETWORK === "mainnet"
+          ? "Private beta — records are anchored on the Stellar public network. No financial transactions are handled."
+          : "Early-stage build, currently anchoring on Stellar testnet — not yet handling real financial transactions."}
       </p>
     </div>
   );

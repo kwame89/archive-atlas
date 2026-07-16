@@ -16,7 +16,12 @@ import {
   uploadProfileMedia,
 } from "../lib/profiles";
 import { getPrimaryImageUrls, isController, listArtworksByArtist } from "../lib/artworks";
-import { linkWallet, disconnectWallet } from "../lib/stellarWallet";
+import {
+  linkWallet,
+  disconnectWallet,
+  STELLAR_NETWORK,
+  STELLAR_EXPERT_BASE,
+} from "../lib/stellarWallet";
 import { getErrorMessage } from "../lib/errors";
 import { AppHeader } from "../components/AppHeader";
 import type { Artwork, Profile } from "../types/database";
@@ -249,7 +254,9 @@ export function ProfilePage() {
                     className={`wallet-account-status${profile.linked_wallet ? " is-connected" : ""}`}
                   >
                     {profile.linked_wallet && <CheckCircle2 size={14} aria-hidden="true" />}
-                    {profile.linked_wallet ? "Connected to testnet" : "Not connected"}
+                    {profile.linked_wallet
+                      ? `Connected to ${STELLAR_NETWORK === "mainnet" ? "Stellar mainnet" : "testnet"}`
+                      : "Not connected"}
                   </span>
                 </header>
 
@@ -260,7 +267,7 @@ export function ProfilePage() {
                         {profile.linked_wallet.slice(0, 8)}…{profile.linked_wallet.slice(-8)}
                       </code>
                       <a
-                        href={`https://stellar.expert/explorer/testnet/account/${profile.linked_wallet}`}
+                        href={`${STELLAR_EXPERT_BASE}/account/${profile.linked_wallet}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         title="View this account on Stellar Expert"
