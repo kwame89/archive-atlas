@@ -6,7 +6,7 @@ import {
   CheckCircle2,
   CircleAlert,
   Plus,
-  Printer,
+  Layers,
   Search,
   UserRound,
   X,
@@ -200,9 +200,9 @@ export function HomePage({ profile }: { profile: Profile }) {
                 <span><strong>Log exhibition</strong><small>Record a showing</small></span>
                 <ArrowRight size={16} aria-hidden="true" />
               </Link>
-              <Link to={`/profiles/${profile.id}`}>
-                <Printer size={18} aria-hidden="true" />
-                <span><strong>Build catalog</strong><small>Select works to print</small></span>
+              <Link to="/collections">
+                <Layers size={18} aria-hidden="true" />
+                <span><strong>Collections</strong><small>Organize bodies of work</small></span>
                 <ArrowRight size={16} aria-hidden="true" />
               </Link>
               <Link to={`/profiles/${profile.id}`}>

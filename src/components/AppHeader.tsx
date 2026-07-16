@@ -1,5 +1,6 @@
 import {
   CalendarRange,
+  Layers,
   LogOut,
   Plus,
   UserRound,
@@ -64,6 +65,10 @@ export function AppHeader({
           <Link to="/exhibitions" className={navClass("/exhibitions")}>
             <CalendarRange size={16} strokeWidth={1.8} aria-hidden="true" />
             Exhibitions
+          </Link>
+          <Link to="/collections" className={navClass("/collections")}>
+            <Layers size={16} strokeWidth={1.8} aria-hidden="true" />
+            Collections
           </Link>
           <button type="button" className="nav-link nav-link-button" onClick={handleSignOut}>
             <LogOut size={16} strokeWidth={1.8} aria-hidden="true" />

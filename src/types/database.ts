@@ -88,6 +88,25 @@ export interface ArtworkImage {
   created_at: string;
 }
 
+export interface Collection {
+  id: string;
+  artist_id: string;
+  title: string;
+  description: string | null;
+  start_year: number | null;
+  end_year: number | null;
+  cover_artwork_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CollectionArtwork {
+  collection_id: string;
+  artwork_id: string;
+  sort_order: number;
+  added_at: string;
+}
+
 export interface Consignment {
   id: string;
   artwork_id: string;

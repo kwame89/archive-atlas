@@ -14,8 +14,16 @@ export interface JgaPushItemResult {
   images?: JgaPushImageResult[];
 }
 
+export interface JgaPushCollectionResult {
+  atlas_collection_id: string;
+  status: "created" | "updated" | "rejected";
+  reason?: string;
+  artwork_count?: number;
+}
+
 export interface JgaPushResponse {
   results: JgaPushItemResult[];
+  collection_results?: JgaPushCollectionResult[];
 }
 
 /**
@@ -54,4 +62,45 @@ export async function pushArtworkToJga(artworkId: string): Promise<JgaPushItemRe
     throw new Error(result.reason ?? "JGA Studio rejected this artwork");
   }
   return result;
+}
+
+/** Pushes a collection and its ordered artwork membership as one operation. */
+export async function pushCollectionToJga(
+  collectionId: string
+): Promise<{
+  collection: JgaPushCollectionResult;
+  artworks: JgaPushItemResult[];
+}> {
+  const { data, error } = await supabase.functions.invoke("push-to-jga", {
+    body: { collectionId },
+  });
+
+  if (error) {
+    let message = error.message ?? "Push failed";
+    const context = (error as { context?: Response }).context;
+    if (context) {
+      try {
+        const body = await context.json();
+        if (body?.error) message = body.error;
+      } catch {
+        // keep the generic message
+      }
+    }
+    throw new Error(message);
+  }
+
+  if (data?.error) throw new Error(data.error);
+  const response = data as JgaPushResponse;
+  const collection = response.collection_results?.[0];
+  if (!collection) {
+    throw new Error("JGA Studio returned no result for this collection");
+  }
+  if (collection.status === "rejected") {
+    throw new Error(collection.reason ?? "JGA Studio rejected this collection");
+  }
+
+  return {
+    collection,
+    artworks: response.results ?? [],
+  };
 }

@@ -32,7 +32,7 @@ const JGA_IMPORT_URL = Deno.env.get("JGA_IMPORT_URL");
 const JGA_PUSH_SHARED_SECRET = Deno.env.get("JGA_PUSH_SHARED_SECRET");
 const ATLAS_PUBLIC_URL = (Deno.env.get("ATLAS_PUBLIC_URL") ?? "").replace(/\/+$/, "");
 
-const MAX_ARTWORKS_PER_PUSH = 20;
+const MAX_ARTWORKS_PER_PUSH = 30;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -90,13 +90,66 @@ Deno.serve(async (req) => {
 
     // --- Input -------------------------------------------------------------
     const payload = await req.json().catch(() => null);
-    const artworkIds: string[] = Array.isArray(payload?.artworkIds)
+    const collectionId =
+      typeof payload?.collectionId === "string" ? payload.collectionId : null;
+    let artworkIds: string[] = Array.isArray(payload?.artworkIds)
       ? payload.artworkIds
       : payload?.artworkId
         ? [payload.artworkId]
         : [];
+
+    let pushedCollection: {
+      atlas_collection_id: string;
+      root_artist_id: string;
+      title: string;
+      description: string | null;
+      start_year: number | null;
+      end_year: number | null;
+      cover_artwork_id: string | null;
+      artwork_ids: string[];
+    } | null = null;
+
+    if (collectionId) {
+      const { data: collection, error: collectionError } = await supabase
+        .from("collections")
+        .select("*")
+        .eq("id", collectionId)
+        .maybeSingle();
+      if (collectionError) {
+        return jsonResponse({ error: collectionError.message }, 500);
+      }
+      if (!collection) {
+        return jsonResponse({ error: "Collection not found" }, 404);
+      }
+
+      const { data: memberships, error: membershipError } = await supabase
+        .from("collection_artworks")
+        .select("artwork_id, sort_order")
+        .eq("collection_id", collectionId)
+        .order("sort_order", { ascending: true });
+      if (membershipError) {
+        return jsonResponse({ error: membershipError.message }, 500);
+      }
+
+      artworkIds = (memberships ?? []).map((membership) => membership.artwork_id);
+      pushedCollection = {
+        atlas_collection_id: collection.id,
+        root_artist_id: collection.artist_id,
+        title: collection.title,
+        description: collection.description ?? null,
+        start_year: collection.start_year ?? null,
+        end_year: collection.end_year ?? null,
+        cover_artwork_id: collection.cover_artwork_id ?? artworkIds[0] ?? null,
+        artwork_ids: artworkIds,
+      };
+    }
+
+    artworkIds = [...new Set(artworkIds)];
     if (artworkIds.length === 0) {
-      return jsonResponse({ error: "Provide artworkId or artworkIds" }, 400);
+      return jsonResponse(
+        { error: collectionId ? "Add at least one artwork to this collection" : "Provide artworkId or artworkIds" },
+        400
+      );
     }
     if (artworkIds.length > MAX_ARTWORKS_PER_PUSH) {
       return jsonResponse({ error: `At most ${MAX_ARTWORKS_PER_PUSH} artworks per push` }, 400);
@@ -111,6 +164,12 @@ Deno.serve(async (req) => {
     if (!artworks || artworks.length === 0) {
       return jsonResponse({ error: "No matching artworks" }, 404);
     }
+    if (artworks.length !== artworkIds.length) {
+      return jsonResponse(
+        { error: "One or more collection artworks could not be loaded" },
+        404
+      );
+    }
 
     const { data: myProfiles } = await supabase
       .from("profiles")
@@ -122,6 +181,15 @@ Deno.serve(async (req) => {
     }
 
     const rootArtistIds = [...new Set(artworks.map((a) => a.root_artist_id))];
+    if (
+      pushedCollection &&
+      !rootArtistIds.includes(pushedCollection.root_artist_id)
+    ) {
+      return jsonResponse(
+        { error: "Collection artworks must belong to the collection artist" },
+        400
+      );
+    }
     const { data: integrationRows, error: integrationsError } = await supabase
       .from("profile_integrations")
       .select("profile_id")
@@ -199,7 +267,10 @@ Deno.serve(async (req) => {
     }));
 
     // --- Sign and send -------------------------------------------------------
-    const body = JSON.stringify({ artworks: items });
+    const body = JSON.stringify({
+      artworks: items,
+      collections: pushedCollection ? [pushedCollection] : [],
+    });
     const timestamp = Date.now().toString();
     const signature = await hmacSha256Hex(JGA_PUSH_SHARED_SECRET, `${timestamp}.${body}`);
 
