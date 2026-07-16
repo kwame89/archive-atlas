@@ -253,6 +253,7 @@ Deno.serve(async (req) => {
       edition_total: a.edition_total ?? null,
       description: a.description ?? null,
       tags: Array.isArray(a.tags) ? a.tags : [],
+      art_type: a.art_type ?? null,
       subject_matter: a.subject_matter ?? null,
       provenance_url: `${ATLAS_PUBLIC_URL}/artworks/${a.id}`,
       images: (imageRows ?? [])
