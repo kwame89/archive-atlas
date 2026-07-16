@@ -7,10 +7,10 @@
 // This function only ever sends identity fields — it knows nothing about
 // prices, and the receiving side refuses to touch commerce columns.
 //
-// Auth: the caller must be signed in AND control the artwork's root artist
-// profile (same rule as editing the artwork), re-checked server-side here —
-// the same "server re-verifies, never just trusts a client claim" pattern as
-// anchor-event.
+// Auth: JGA Studio is a private integration. The artwork's root artist must
+// have the server-managed jga_studio integration enabled, and the caller must
+// be signed in and control that root profile. Both rules are re-checked here;
+// hiding the browser button is only a convenience, never the security layer.
 //
 // Transport auth to JGA Studio is an HMAC-SHA256 signature over
 // `${timestamp}.${body}` with a shared secret — no user tokens cross the
@@ -122,6 +122,32 @@ Deno.serve(async (req) => {
     }
 
     const rootArtistIds = [...new Set(artworks.map((a) => a.root_artist_id))];
+    const { data: integrationRows, error: integrationsError } = await supabase
+      .from("profile_integrations")
+      .select("profile_id")
+      .eq("integration_key", "jga_studio")
+      .eq("enabled", true)
+      .in("profile_id", rootArtistIds);
+    if (integrationsError) {
+      return jsonResponse({ error: "Could not verify JGA Studio integration access" }, 500);
+    }
+
+    const integrationEnabled = new Set(
+      (integrationRows ?? []).map((row) => row.profile_id)
+    );
+    const integrationDenied = artworks.filter(
+      (artwork) => !integrationEnabled.has(artwork.root_artist_id)
+    );
+    if (integrationDenied.length > 0) {
+      return jsonResponse(
+        {
+          error: "JGA Studio publishing is not enabled for this artist profile",
+          denied_artwork_ids: integrationDenied.map((artwork) => artwork.id),
+        },
+        403
+      );
+    }
+
     const { data: controllerRows } = await supabase
       .from("profile_controllers")
       .select("profile_id")

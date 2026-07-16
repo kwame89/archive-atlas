@@ -54,9 +54,12 @@ images, provenance link) via its `atlas-import` Edge Function — full contract
 in that repo's `docs/09-archive-atlas-integration.md`. Pricing/availability
 are set in JGA Studio and never touched by pushes.
 
-Root-artist controllers see a **JGA Studio** panel on each artwork page.
-Re-pushing is safe: JGA upserts by artwork id and diffs images by content
-hash.
+JGA Studio is a private integration for Jay Golding's root artist profile,
+enabled by `supabase/migrations/0020_profile_integrations.sql`. Its controller
+sees a **JGA Studio** panel on each of Jay's artwork pages; other artists never
+receive the control, and the Edge Function independently enforces the same
+allowlist. Re-pushing is safe: JGA upserts by artwork id and diffs images by
+content hash.
 
 To enable it, deploy `supabase/functions/push-to-jga` and set three function
 secrets:

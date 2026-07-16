@@ -35,6 +35,10 @@ import {
   uploadArtworkImages,
 } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
+import {
+  JGA_STUDIO_INTEGRATION,
+  profileHasIntegration,
+} from "../lib/profileIntegrations";
 import { TransferForm } from "../components/TransferForm";
 import { ExhibitionForm } from "../components/ExhibitionForm";
 import { ConditionReportForm } from "../components/ConditionReportForm";
@@ -102,6 +106,7 @@ export function ArtworkPage() {
   const [names, setNames] = useState<Record<string, string>>({});
   const [myProfile, setMyProfile] = useState<Profile | null>(null);
   const [canManage, setCanManage] = useState(false);
+  const [canPushToJga, setCanPushToJga] = useState(false);
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const [controlsOwner, setControlsOwner] = useState(false);
   const [controlsCustodian, setControlsCustodian] = useState(false);
@@ -193,7 +198,8 @@ export function ArtworkPage() {
       setMyProfile(profileResult);
       if (profileResult) {
         setMyProfileId(profileResult.id);
-        const [rootControl, ownerControl, custodianControl] = await Promise.all([
+        const [rootControl, ownerControl, custodianControl, jgaIntegrationEnabled] =
+          await Promise.all([
           canActFor(artworkResult.root_artist_id, profileResult.id),
           artworkResult.current_owner_id
             ? canActFor(artworkResult.current_owner_id, profileResult.id)
@@ -201,8 +207,13 @@ export function ArtworkPage() {
           artworkResult.current_custodian_id
             ? canActFor(artworkResult.current_custodian_id, profileResult.id)
             : false,
+          profileHasIntegration(
+            artworkResult.root_artist_id,
+            JGA_STUDIO_INTEGRATION
+          ),
         ]);
         setCanManage(rootControl);
+        setCanPushToJga(rootControl && jgaIntegrationEnabled);
         setControlsOwner(ownerControl);
         setControlsCustodian(custodianControl);
         if (rootControl) {
@@ -212,6 +223,10 @@ export function ArtworkPage() {
     } else {
       setMyProfile(null);
       setMyProfileId(null);
+      setCanManage(false);
+      setCanPushToJga(false);
+      setControlsOwner(false);
+      setControlsCustodian(false);
     }
   }, [id, session]);
 
@@ -979,7 +994,7 @@ export function ArtworkPage() {
                 </section>
               )}
 
-              {canManage && (
+              {canManage && canPushToJga && (
                 <section className="management-panel">
                   <h3>JGA Studio</h3>
                   <PushToJgaButton artworkId={artwork.id} />

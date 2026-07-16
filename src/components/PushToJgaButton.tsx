@@ -6,9 +6,10 @@ import { getErrorMessage } from "../lib/errors";
 /**
  * "Push to JGA Studio" — sends this artwork's identity record and images to
  * the JGA Studio storefront (jga-studio repo, docs/09). Shown only to
- * controllers of the root artist profile. Re-pushing is safe: JGA upserts by
- * this artwork's id and skips unchanged images, and it never overwrites
- * pricing or availability set in JGA.
+ * controllers of Jay's JGA-enabled root artist profile. The Edge Function
+ * independently enforces that private integration allowlist. Re-pushing is
+ * safe: JGA upserts by this artwork's id and skips unchanged images, and it
+ * never overwrites pricing or publication status set in JGA.
  */
 export function PushToJgaButton({ artworkId }: { artworkId: string }) {
   const [pushing, setPushing] = useState(false);
