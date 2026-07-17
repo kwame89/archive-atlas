@@ -16,8 +16,8 @@ development connects to a hosted Supabase project.
    `supabase/migrations/` against it (via the Supabase SQL editor or the Supabase CLI), in order.
 3. Copy `.env.example` to `.env.local` and fill in your Supabase project URL and anon key.
 4. Deploy `supabase/functions/anchor-event/` as a Supabase Edge Function and set the
-   `STELLAR_ANCHOR_SECRET` secret to a funded Stellar testnet secret key (optional — the app
-   works without it; events just won't be anchored on Stellar).
+   `STELLAR_ANCHOR_SECRET` secret to a funded Stellar key for the selected network (optional —
+   the app works without it; events just won't be anchored on Stellar).
 5. Deploy `supabase/functions/link-wallet/` as a Supabase Edge Function (needed for Phase 2
    wallet-linking; no extra secrets to set — it only uses the auto-provided Supabase ones).
 6. `npm run dev`
@@ -101,9 +101,10 @@ The network is config, not code. Everything defaults to **testnet**; flipping
 to mainnet is four steps, done together:
 
 1. **Create and fund the platform anchor account (you, manually).** Generate a
-   fresh keypair in any Stellar wallet, send it ~10 XLM from an exchange
-   (1 XLM covers the account reserve; each anchor costs 0.00001 XLM, so 10 XLM
-   funds roughly 900,000 anchors). Never reuse the testnet key.
+   fresh keypair in any Stellar wallet and send it ~10 XLM from an exchange.
+   Archive Atlas writes and removes each event data entry in the same transaction,
+   so event proofs remain in transaction history without accumulating account
+   subentries or minimum-balance reserves. Never reuse the testnet key.
 2. **Function secrets** on `anchor-event`:
    `STELLAR_NETWORK=mainnet` and `STELLAR_ANCHOR_SECRET=<the new mainnet secret key>`.
 3. **Site env** on Vercel: `VITE_STELLAR_NETWORK=mainnet`, then redeploy.
@@ -121,6 +122,11 @@ the Public network to sign.
 Both sides must flip together: a mainnet site against a testnet function (or
 vice versa) will fail signature verification on wallet-signed anchors —
 that's intentional.
+
+Each anchor transaction contains a `manage_data` write followed by deletion of
+the same entry. The immutable transaction still proves the event hash, while the
+anchor account does not retain one reserve-consuming subentry per event. A later
+anchor also removes up to 98 stale `event:` entries left by older deployments.
 
 ## Where things stand
 

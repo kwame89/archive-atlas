@@ -277,9 +277,9 @@ profile" checkbox in the profile edit form, backed by `updateProfile`'s `isPubli
   original scope of this phase (multi-image support, editable dates, richer artwork fields,
   print export, collaborators, the collective dashboard).
 - **Phase 1 — Stellar anchoring.** ✅ **Done and verified live** (July 2026). The `anchor-event`
-  Supabase Edge Function hashes an event's canonical fields and anchors the hash on Stellar
-  testnet via a `manage_data` operation, signed by a platform-controlled testnet keypair (held
-  as an Edge Function secret, never client-side). The client fires it after every
+  Supabase Edge Function hashes an event's canonical fields and anchors the hash on the
+  configured Stellar network via a reserve-safe `manage_data` write/delete pair, signed by a
+  platform keypair (held as an Edge Function secret, never client-side). The client fires it after every
   genesis/transfer/custody/claim event creation — fire-and-forget, so anchoring failures never
   block or undo the database record. Anchored events show a Stellar Expert link in the
   provenance timeline. Note: platform-signed anchoring proves an event's content existed

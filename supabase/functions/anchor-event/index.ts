@@ -1,4 +1,5 @@
-// Anchors an event's hash on Stellar testnet via a manage_data operation.
+// Anchors an event's hash on the configured Stellar network via a
+// reserve-safe manage_data write/delete pair.
 //
 // Two modes, both ending in the same on_chain_anchor_hash column:
 //
@@ -22,7 +23,8 @@
 //
 // Deploy via the Supabase Dashboard's Edge Functions editor (paste this
 // file's contents in), then set two function secrets:
-//   STELLAR_ANCHOR_SECRET  — the platform Stellar testnet secret key
+//   STELLAR_ANCHOR_SECRET  — the platform Stellar secret key for the
+//                            selected network
 //   (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are already provided
 //   automatically in the Edge Function runtime — no need to set those)
 
@@ -171,14 +173,31 @@ Deno.serve(async (req) => {
       const tx = TransactionBuilder.fromXDR(txRecord.envelope_xdr, NETWORK_PASSPHRASE);
       const expectedName = `event:${event.id}`.slice(0, 64);
       const operations = "operations" in tx ? tx.operations : [];
-      const manageDataOp = operations.find(
+      const manageDataOps = operations.filter(
         (op) => op.type === "manageData" && op.name === expectedName
-      ) as { name: string; value?: Uint8Array } | undefined;
+      ) as Array<{ name: string; value?: Uint8Array | null }>;
+      const [anchorOp, cleanupOp] = manageDataOps;
 
-      if (!manageDataOp?.value) {
-        return jsonResponse({ error: "No matching manage_data operation found" }, 400);
+      if (
+        manageDataOps.length !== 2 ||
+        !anchorOp?.value ||
+        cleanupOp?.value != null
+      ) {
+        return jsonResponse(
+          { error: "Transaction must write and then remove the matching manage_data proof" },
+          400
+        );
       }
-      const actualValue = new TextDecoder().decode(manageDataOp.value);
+      const hasUnsafeOperation = operations.some((op) => {
+        if (op.type !== "manageData") return true;
+        if (op.name === expectedName) return false;
+        return !op.name.startsWith("event:") || op.value != null;
+      });
+      if (hasUnsafeOperation) {
+        return jsonResponse({ error: "Anchor transaction contains an unrelated operation" }, 400);
+      }
+
+      const actualValue = new TextDecoder().decode(anchorOp.value);
       if (actualValue !== contentHash) {
         return jsonResponse({ error: "Anchored value does not match event content hash" }, 400);
       }
@@ -205,17 +224,30 @@ Deno.serve(async (req) => {
 
     const keypair = Keypair.fromSecret(STELLAR_ANCHOR_SECRET);
     const account = await server.loadAccount(keypair.publicKey());
+    const anchorName = `event:${event.id}`.slice(0, 64);
+    const staleAnchorNames = Object.keys(account.data_attr ?? {})
+      .filter((name) => name.startsWith("event:") && name !== anchorName)
+      .slice(0, 98);
 
-    const transaction = new TransactionBuilder(account, {
+    const transactionBuilder = new TransactionBuilder(account, {
       fee: BASE_FEE,
       networkPassphrase: NETWORK_PASSPHRASE,
-    })
+    });
+
+    for (const staleName of staleAnchorNames) {
+      transactionBuilder.addOperation(
+        Operation.manageData({ name: staleName, value: null })
+      );
+    }
+
+    const transaction = transactionBuilder
       .addOperation(
         Operation.manageData({
-          name: `event:${event.id}`.slice(0, 64),
+          name: anchorName,
           value: contentHash, // 64 hex chars = 64 bytes, exactly the manage_data limit
         })
       )
+      .addOperation(Operation.manageData({ name: anchorName, value: null }))
       .setTimeout(180)
       .build();
 

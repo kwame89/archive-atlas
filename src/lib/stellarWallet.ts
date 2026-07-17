@@ -216,17 +216,30 @@ export async function signAndAnchorEvent(
 
   const contentHash = await sha256Hex(canonicalEventJson(event));
   const account = await server.loadAccount(actorPublicKey);
+  const anchorName = `event:${event.id}`.slice(0, 64);
+  const staleAnchorNames = Object.keys(account.data_attr ?? {})
+    .filter((name) => name.startsWith("event:") && name !== anchorName)
+    .slice(0, 98);
 
-  const transaction = new TransactionBuilder(account, {
+  const transactionBuilder = new TransactionBuilder(account, {
     fee: BASE_FEE,
     networkPassphrase: NETWORK_PASSPHRASE,
-  })
+  });
+
+  for (const staleName of staleAnchorNames) {
+    transactionBuilder.addOperation(
+      Operation.manageData({ name: staleName, value: null })
+    );
+  }
+
+  const transaction = transactionBuilder
     .addOperation(
       Operation.manageData({
-        name: `event:${event.id}`.slice(0, 64),
+        name: anchorName,
         value: contentHash,
       })
     )
+    .addOperation(Operation.manageData({ name: anchorName, value: null }))
     .setTimeout(180)
     .build();
 
