@@ -1,7 +1,8 @@
 # Archive Atlas — Scope & Design Doc
 
 _Formerly "Artist Archive & Provenance Platform" (working title); branded Archive Atlas as of
-July 2026. A living document — expect this to change as the idea develops._
+July 2026. This document describes the implemented technical model and design decisions. See
+[PRD.md](./PRD.md) for current product requirements, beta priorities, and launch criteria._
 
 ## Vision
 
@@ -17,9 +18,10 @@ borrowing a term art historians already use for the definitive scholarly record 
 body of work, except authored and controlled by the artist (or their estate) instead of a
 third-party scholar, gallery, or estate foundation after the fact.
 
-## MVP Scope: Audit-Trail Provenance
+## Current Product Boundary: Audit-Trail Provenance
 
-No tokenized ownership, no on-chain settlement yet. The MVP is a permissioned audit trail of
+No tokenized ownership or on-chain settlement is used as the source of truth. Archive Atlas is a
+permissioned audit trail of
 **events** (transfers, custody changes, exhibitions, claims) tied to **artworks** and **profiles**,
 with Stellar used to anchor those events so they're tamper-evident and independently timestamped
 — not to represent title itself.
@@ -51,7 +53,7 @@ resolves the "enforced vs. simple" tension from earlier:
 3. **Wallet-linked** — the artist later pairs a Stellar keypair to their claimed profile.
    Attestations going forward can be cryptographically signed by that key, not just labeled —
    this is where the stronger, Stellar-native trust claim actually kicks in.
-4. **(Phase 2) Multisig entity** — an artist who wants their studio/LLC to be a formally
+4. **(Planned) Multisig entity** — an artist who wants their studio/LLC to be a formally
    separate, cryptographically-enforced co-signer can opt into that later. Not required, not
    default.
 
@@ -61,7 +63,7 @@ silently becoming artist-verified retroactively.
 
 ## Core Data Model (as implemented)
 
-_This section describes the actual database schema (migrations 0001–0011), not just the
+_This section describes the actual database schema (migrations 0001–0024), not just the
 conceptual design — implementation status is called out inline below wherever what's built
 diverges from what was originally designed._
 
@@ -80,7 +82,10 @@ multisig-threshold approval are not built.
 `depth` (structured, numeric), `year`, `is_circa`, `date_display_override` (for imprecise dates
 like "1970s"), `edition_number`/`edition_total`, `description` (public), `tags` (text array),
 `subject_matter`, `art_type`, `is_signed`, `signature_notes`, `condition`, `root_artist_id`,
-`current_owner_id`, `current_custodian_id`, `created_at`. The detail fields beyond the original
+`current_owner_id`, `current_custodian_id`, `royalty_percentage`, `artwork_value`,
+`value_currency`, `created_at`. `artwork_value` is artist-maintained archival metadata and is
+deliberately separate from a sale-event price, consignment asking price, insurance value, or JGA
+Studio listing price. The detail fields beyond the original
 draft (description, structured dimensions, tags, subject matter, signature, condition, circa
 dates) were added after a direct comparison against Artwork Archive's actual piece record —
 see git history around migration 0008.
@@ -103,9 +108,11 @@ transfers) — that stays with the root artist's controllers.
 an agent, e.g. a gallery), `artwork_id`, `target_profile_id` (used by `claim`), `from_party_id`/
 `to_party_id` (whose ownership/custody actually changed — may differ from actor), 
 `disputed_event_id`, `transaction_group_id` (links events fired together as one real-world
-transaction), `occurred_at`, `on_chain_anchor_hash` (the Stellar testnet transaction hash of
-this event's anchor — populated by the anchor-event Edge Function, see MVP Build Plan below),
-`price`, `currency`, `notes`, `created_at`.
+transaction), `occurred_at`, `on_chain_anchor_hash`, `anchor_network`, `wallet_signed`, `price`,
+`currency`, `notes`, exhibition/corroboration fields, `condition_rating`, and `created_at`.
+`on_chain_anchor_hash` is populated by the `anchor-event` Edge Function; `anchor_network`
+preserves whether that transaction belongs to testnet or the public network, and
+`wallet_signed` distinguishes an artist-wallet signature from a platform anchor.
 
 Event types defined in the `event_type` enum:
 - `genesis` — **implemented.** Artist/collective creates the canonical record for a new work.
@@ -132,6 +139,24 @@ the public-facing `custody_change`; returning it restores custody to the consign
 consignment sold does not silently change legal ownership — the ownership-transfer workflow is a
 separate, explicit action. Agreement files live in a private storage bucket and are opened using
 short-lived signed URLs. One active consignment per artwork is enforced at the database layer.
+
+**collections** and **collection_artworks** — **implemented.** Private, controller-managed,
+ordered bodies of work with title, description, year range, cover artwork, and atomic membership
+replacement. Every member must belong to the collection artist, duplicates are rejected, and a
+collection is limited to 100 artworks. Archive Atlas collection visibility is currently private;
+public presentation is handled only through an approved publishing destination.
+
+**profile_integrations** — **implemented.** A server-managed allowlist for profile-specific
+integrations. Authenticated clients may read enabled integrations to decide which controls to
+show, but only service-role processes can grant or change access. The `jga_studio` integration is
+enabled only for Jay Golding's root artist profile and is independently enforced by the
+`push-to-jga` Edge Function.
+
+**authenticity_certificates** — **implemented.** Versioned, immutable snapshots of canonical
+artwork identity and authorship fields with a certificate number, public verification code,
+SHA-256 fingerprint, issuer, issue date, and revocation/supersession history. Only a controller of
+a claimed root-artist profile can issue one. Certificates intentionally omit current ownership
+and artwork value because they are not title documents or appraisals.
 
 **Unclaimed profiles are restricted** to being the `party` in `genesis`, `custody_change`, and
 `exhibition` events only — enforced at the RLS layer for `ownership_transfer` (requires at least
@@ -168,7 +193,7 @@ platform ever needing to model bylaws or elections itself.
 For any profile with more than one current controller, changing the controller set should
 require approval from a threshold of the existing controllers, not any single one acting alone —
 this prevents one rogue controller from unilaterally seizing sole control of an org profile. This
-maps directly onto the Phase 2 multisig-entity tier already planned (an M-of-N Stellar multisig)
+maps directly onto a future multisig-entity tier (an M-of-N Stellar multisig)
 rather than needing new mechanics: an individual artist profile needs no threshold, being a sole
 controller by definition, until the moment succession is triggered and a pre-designated successor
 becomes the sole new controller.
@@ -223,27 +248,35 @@ claimed was wrong or fabricated, they log a `dispute` against it (see Event type
 rather than the record being silently rewritten.
 
 **Royalty commitment** (attached to the artwork) — a suggested resale royalty percentage,
-unenforced in the MVP. This is the seed for enforceable artist resale royalties once a
-payment/settlement layer exists in Phase 2 — a real, largely unsolved gap in the US art market
+unenforced in the current product. This is the seed for enforceable artist resale royalties if a
+future payment/settlement layer is legally and operationally justified — a real, largely unsolved gap in the US art market
 (droit de suite barely exists here and is poorly enforced even in jurisdictions that have it).
 **Status: implemented.** `artworks.royalty_percentage` (nullable numeric), settable at creation
 or edited later by the root artist's controllers, displayed on the public artwork page. Purely
 informational today — no payment or collection mechanism exists yet.
 
-## Where Stellar Fits (MVP)
+## Where Stellar Fits Today
 
-- Anchor a hash of each Event on Stellar (e.g. `manage_data` or a light Soroban contract) so
-  records are tamper-evident and independently verifiable — without putting rich data
-  (images, descriptions) on-chain.
-- Once an artist reaches the wallet-linked tier, their attestations are actually signed by
-  their key, not just labeled as theirs.
-- Everything beyond this (tokenized title, atomic payment+transfer settlement, royalty
-  enforcement) is explicitly Phase 2 — see below.
+- The `anchor-event` Edge Function canonicalizes and hashes an Event, then submits only that hash
+  to the configured Stellar network. Images, descriptions, private data, and human-readable
+  ownership information remain off-chain.
+- The hosted private beta uses the Stellar public network for new anchors. Historical testnet
+  anchors retain their original network labels and explorer links.
+- Platform-signed events use a reserve-safe `manage_data` write/delete pair in one transaction.
+  The immutable transaction preserves the proof without leaving a reserve-consuming data entry on
+  the platform account; later anchors can also remove stale entries created by older deployments.
+- Once an artist reaches the wallet-linked tier, genesis and ownership-transfer events require a
+  transaction signed by the linked wallet. Other events continue to use the platform key so the
+  ordinary archive remains usable without repeated wallet friction.
+- The Edge Function independently verifies wallet source, network, event name, operation shape,
+  and content hash before trusting a wallet-signed transaction.
+- Tokenized title, atomic payment/transfer settlement, and royalty enforcement remain outside the
+  current product boundary.
 
 ## Things borrowed from how the art world actually works
 
-Flagging a few things worth designing for now, even if not built in the MVP, based on how
-provenance and the art market actually function:
+These principles are reflected in the current model and should remain intact as the product
+expands:
 
 - **Custody ≠ ownership.** Loans and consignments are extremely common and must *not* be
   modeled as transfers — a gallery holding work on consignment doesn't own it. This is probably
@@ -263,10 +296,11 @@ provenance and the art market actually function:
   raisonnés are maintained today (e.g. artist foundations), and it's much easier to design the
   successor relationship in now than to bolt it on later.
 
-## MVP Build Plan
+## Implementation Status and Beta Priorities
 
-**Screens:** artwork page (public provenance timeline and private consignment manager) ✅, profile page (trust-tier badge, claim
-status, bio/website/CV, avatar) ✅, claim flow (email/social verification) ✅, role-gated
+**Screens:** artwork page (public provenance timeline and private consignment manager) ✅,
+profile page (trust-tier badge, claim status, bio/website/CV, avatar) ✅, claim flow
+(email/social verification) ✅, role-gated
 event-logging forms ✅ (genesis/ownership_transfer/custody_change/exhibition), a collective/studio
 dashboard for managing member profiles ✅, and collector privacy settings ✅ (a "Publicly visible
 profile" checkbox in the profile edit form, backed by `updateProfile`'s `isPublic` field).
@@ -279,28 +313,28 @@ profile" checkbox in the profile edit form, backed by `updateProfile`'s `isPubli
 - **Phase 1 — Stellar anchoring.** ✅ **Done and verified live** (July 2026). The `anchor-event`
   Supabase Edge Function hashes an event's canonical fields and anchors the hash on the
   configured Stellar network via a reserve-safe `manage_data` write/delete pair, signed by a
-  platform keypair (held as an Edge Function secret, never client-side). The client fires it after every
-  genesis/transfer/custody/claim event creation — fire-and-forget, so anchoring failures never
-  block or undo the database record. Anchored events show a Stellar Expert link in the
+  platform keypair (held as an Edge Function secret, never client-side). The client requests an
+  anchor after each eligible event creation; wallet-linked genesis and ownership-transfer events
+  deliberately wait for the actor's wallet instead. Requests are fire-and-forget, so an anchoring
+  failure never blocks or undoes the database record. Anchored events show a Stellar Expert link in the
   provenance timeline. Note: platform-signed anchoring proves an event's content existed
   unaltered at a point in time; it does not prove the artist personally signed it — that's
   what Phase 2 wallet-linking adds.
-- **Phase 2 — wallet-linking tier.** ✅ **Done.** A profile links a Freighter wallet from its
-  profile page: Freighter signs a SEP-53 message (no transaction, no funding needed — this is
-  proof of key ownership, not something recorded on-chain) and the `link-wallet` Edge Function
-  independently re-verifies that signature before bumping `trust_tier` to `wallet_linked` and
-  storing `linked_wallet`. Deliberately scoped friction: genesis and ownership_transfer events by
-  a wallet-linked actor are no longer auto-anchored by the platform — a "Sign & anchor with your
-  wallet" button appears on that event in the provenance timeline instead, requiring a live
-  Freighter approval (funding the testnet account via Friendbot first if needed) before the
-  event's hash actually lands on-chain under the artist's own key. Everything else (exhibition,
-  custody_change, condition_report, and claim, plus genesis/ownership_transfer for anyone not
-  wallet-linked) keeps today's silent platform-anchoring unchanged. `claim` was included in the
-  original "high-stakes" list but in practice can't hit the wallet-signed path under normal
-  sequencing — wallet-linking only happens after claiming, so no UI was built for it. Anchored
-  events now show "signed by artist" vs. platform-anchored in the timeline
+- **Phase 2 — wallet-linking tier.** ✅ **Done.** A profile selects a supported wallet through
+  Stellar Wallets Kit (currently Freighter, Albedo, Rabet, LOBSTR, or Hana). The wallet signs a
+  message proving key control — not an on-chain transaction — and the `link-wallet` Edge Function
+  independently verifies that signature before bumping `trust_tier` to `wallet_linked` and
+  storing `linked_wallet`. Wallet capabilities differ, so the UI reports unsupported signing
+  methods rather than treating every connector as identical. Deliberately scoped friction:
+  genesis and ownership_transfer events by a wallet-linked actor are no longer auto-anchored by
+  the platform. A "Sign & anchor with your wallet" button appears on that event in the provenance
+  timeline instead, requiring a live approval before the event's hash lands on-chain under the
+  artist's own key. Friendbot funding is available only on testnet; public-network accounts must
+  be funded independently. Everything else (exhibition, custody_change, condition_report, and
+  claim, plus genesis/ownership_transfer for anyone not wallet-linked) keeps silent
+  platform-anchoring. Anchored events show "signed by artist" vs. platform-anchored in the timeline
   (`events.wallet_signed`).
-- **Phase 3 — richer role workflows.** ✅ **Done.** Royalty-commitment field, exhibition logging
+- **Phase 3 — richer archive workflows.** ✅ **Done.** Royalty-commitment field, exhibition logging
   (self-logged + corroborated), condition reports, and a "My exhibitions" dashboard (`/exhibitions`
   — every exhibition a profile has logged, across all artworks, with corroboration status) are
   all built. A multi-artwork catalog export (`/catalog/print`) also shipped here, ahead of
@@ -308,17 +342,25 @@ profile" checkbox in the profile edit form, backed by `updateProfile`'s `isPubli
   checklist, same lightweight print-CSS-not-a-PDF-service approach as the single-artwork print
   page. Private consignment management also now covers asking price, commission, terms,
   insurance, agreement files, and sold/returned outcomes while keeping title transfer explicit.
-  This closes out the MVP build plan — everything remaining is Phase 4+.
-- **Phase 4+** — everything below, already out of scope for the MVP.
+  Persistent artwork drafts, image-led batch creation, post-creation media management, archival
+  valuation, ordered Collections, versioned Certificates of Authenticity, and the profile-limited
+  JGA Studio publishing bridge have also shipped.
+- **Current — private-beta stabilization.** 🚧 **In progress.** Visible anchor state and retries,
+  monitoring, mobile/cross-browser testing, condition-report clarity, accessibility, backup and
+  recovery procedures, legal copy, and invited-tester readiness. These are product-quality gates,
+  not a new feature phase; acceptance criteria live in [PRD.md](./PRD.md).
+- **Future research and expansion.** Public collection pages, self-site syndication, bulk archive
+  import/export, dispute and succession workflows, professional integrations, and the long-term
+  items below.
 
-## Explicitly Out of Scope for MVP (Phase 2+)
+## Explicitly Out of Scope for the Current Product
 
 - Tokenized title / on-chain ownership as the source of truth
 - Atomic delivery-vs-payment settlement
 - Enforced resale royalty collection
 - Sales-data aggregation from Artsy, LiveArt, MutualArt, etc. (licensing/partnership problem,
   not an engineering one — revisit once the archival product has real users)
-- Condition/appraisal tooling, insurance integrations
+- Professional appraisal/conservation tooling and insurance-provider integrations
 
 ## Resolved Design Decisions
 
@@ -332,7 +374,7 @@ if they want the reputational upside.
 
 **What an attestation legally means.** Not something to resolve unilaterally in this document —
 flagged for real legal review before public launch, ideally counsel with both art-law and
-fintech/blockchain experience (Phase 2's tokenized settlement in particular can brush up against
+fintech/blockchain experience (future tokenized settlement in particular can brush up against
 securities law depending on structure). In the meantime, product copy should stay conservative
 and match how existing provenance databases limit liability: an attestation is "a claim made by
 [profile] as of [date]," not "verified authentic."

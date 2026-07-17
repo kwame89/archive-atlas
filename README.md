@@ -1,8 +1,13 @@
 # Archive Atlas
 
-An artist-first archival & provenance platform. Early-stage build. See [SCOPE.md](./SCOPE.md)
-for the full design doc — vision, roles, the identity/trust-tier model, the event data model,
-and the phased build plan this repo follows.
+An artist-first archival and provenance platform in founder-led private beta. Archive Atlas is
+the canonical system of record for artworks, collections, provenance, condition, consignments,
+valuation, and Certificates of Authenticity, with independently verifiable event proofs on
+Stellar.
+
+See [PRD.md](./PRD.md) for the current product requirements and private-beta exit criteria,
+[SCOPE.md](./SCOPE.md) for the technical design and data model, and
+[SYNDICATION.md](./SYNDICATION.md) for the proposed self-site publishing protocol.
 
 ## Stack
 
@@ -18,8 +23,8 @@ development connects to a hosted Supabase project.
 4. Deploy `supabase/functions/anchor-event/` as a Supabase Edge Function and set the
    `STELLAR_ANCHOR_SECRET` secret to a funded Stellar key for the selected network (optional —
    the app works without it; events just won't be anchored on Stellar).
-5. Deploy `supabase/functions/link-wallet/` as a Supabase Edge Function (needed for Phase 2
-   wallet-linking; no extra secrets to set — it only uses the auto-provided Supabase ones).
+5. Deploy `supabase/functions/link-wallet/` as a Supabase Edge Function for verified wallet
+   linking (no extra secrets to set — it only uses the auto-provided Supabase ones).
 6. `npm run dev`
 
 ## Test on a phone
@@ -31,9 +36,10 @@ For private testing on a phone connected to the same Wi-Fi network as the Mac:
 3. Add that exact origin plus `/**` to Supabase Authentication > URL
    Configuration > Redirect URLs so email sign-in links can return to the phone.
 
-This only exposes the development server to devices on the local network. Keep
-the app on Stellar testnet and use test data/test wallets until a separate HTTPS
-staging deployment is configured.
+This only exposes the development server to devices on the local network. Local development
+should use a test Supabase project, Stellar testnet, and test wallets unless a production
+verification is being performed deliberately. Remote and invited testing should use the HTTPS
+beta deployment rather than exposing a development server beyond the local network.
 
 ## Project structure
 
@@ -95,10 +101,11 @@ migration, deploy `atlas-import` with `--no-verify-jwt`, and set
 `ATLAS_SHARED_SECRET` plus `ATLAS_ROOT_ARTIST_ID` (your Atlas artist profile
 uuid — only artworks rooted at that profile are accepted).
 
-## Mainnet cutover (Stellar testnet → public network)
+## Stellar network configuration
 
-The network is config, not code. Everything defaults to **testnet**; flipping
-to mainnet is four steps, done together:
+The hosted private beta is configured for the Stellar **public network**. Local development
+defaults to **testnet** so ordinary development cannot accidentally spend XLM or create public
+records. A new environment is moved to mainnet in four coordinated steps:
 
 1. **Create and fund the platform anchor account (you, manually).** Generate a
    fresh keypair in any Stellar wallet and send it ~10 XLM from an exchange.
@@ -130,11 +137,21 @@ anchor also removes up to 98 stale `event:` entries left by older deployments.
 
 ## Where things stand
 
-Phase 0 (core product) is complete and verified: auth/claim flow, artwork records with images
-and rich detail fields, provenance timelines, ownership/custody transfer logging, collaborators,
-a collective dashboard for unclaimed profiles, versioned Certificates of Authenticity, and
-print/PDF export. Phase 1 (Stellar testnet
-anchoring of event hashes via the anchor-event Edge Function) is deployed and verified live.
-Phase 2 (Freighter wallet-linking, with wallet-signed anchoring for genesis/ownership_transfer
-events) is built — see SCOPE.md's Phase 2 notes for exactly how it changes anchoring behavior.
-See SCOPE.md's MVP Build Plan for the full status breakdown.
+The original MVP phases are complete. The hosted app is now in founder-led private-beta
+stabilization with:
+
+- passwordless authentication, profile claiming, trust tiers, and collector privacy;
+- single and batch artwork creation, persistent drafts, editable multi-image records, valuation,
+  collaborators, and private notes;
+- provenance timelines, ownership and custody workflows, exhibition corroboration, condition
+  reports, and private consignment management;
+- ordered Collections, printable artwork/catalog records, and versioned Certificates of
+  Authenticity with public verification;
+- network-aware Stellar anchoring on mainnet for new hosted-beta events, including verified
+  artist-wallet signatures for wallet-linked genesis and ownership-transfer events; and
+- a server-allowlisted, one-way JGA Studio publishing integration for Jay Golding's profile only.
+
+The present priority is reliability rather than feature expansion: visible anchor status and
+retries, mobile and cross-browser smoke tests, condition-report clarity, monitoring, recovery,
+privacy review, and invited-tester readiness. See [PRD.md](./PRD.md) for the acceptance criteria
+and [SCOPE.md](./SCOPE.md) for the implementation breakdown.
