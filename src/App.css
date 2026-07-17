@@ -3704,11 +3704,34 @@ button.secondary:hover:not(:disabled) {
 
 .collection-push-result {
   margin: 16px 0 0;
-  padding: 10px 12px;
+  padding: 12px 14px;
   color: var(--green-dark);
   background: #e1e8e3;
   border-left: 3px solid var(--green);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   font-size: 0.78rem;
+}
+
+.collection-push-result > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.collection-push-result strong,
+.collection-push-result span {
+  display: block;
+}
+
+.collection-push-result strong {
+  margin-bottom: 3px;
+  color: var(--black);
+}
+
+.collection-push-result span {
+  max-width: 68ch;
+  line-height: 1.5;
 }
 
 .results {

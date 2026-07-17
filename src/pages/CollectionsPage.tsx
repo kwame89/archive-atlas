@@ -3,6 +3,7 @@ import {
   ArrowDown,
   ArrowRight,
   ArrowUp,
+  CheckCircle2,
   Image as ImageIcon,
   Layers,
   Plus,
@@ -631,10 +632,17 @@ export function CollectionsPage({ profile }: { profile: Profile }) {
             </footer>
 
             {pushResult && (
-              <p className="collection-push-result" role="status">
-                Collection {pushResult.status === "created" ? "created" : "updated"} in
-                JGA Studio as a draft with {pushResult.artwork_count ?? selectedArtworkIds.length} works.
-              </p>
+              <div className="collection-push-result" role="status">
+                <CheckCircle2 size={20} aria-hidden="true" />
+                <div>
+                  <strong>Draft imported to JGA Studio</strong>
+                  <span>
+                    {pushResult.artwork_count ?? selectedArtworkIds.length} works arrived safely.
+                    In JGA Studio, open Profile → Studio catalog, set prices and publish the
+                    member works, then publish the collection to Discover.
+                  </span>
+                </div>
+              </div>
             )}
           </section>
         </div>
