@@ -90,6 +90,48 @@ export interface ArtworkImage {
   created_at: string;
 }
 
+export interface AuthenticityCertificateSnapshot {
+  schema_version: number;
+  artwork_id: string;
+  title: string;
+  artist_profile_id: string;
+  artist_name: string;
+  artist_trust_tier: TrustTier;
+  artist_linked_wallet: string | null;
+  issued_by_name: string;
+  medium: string | null;
+  dimensions: string | null;
+  height: number | null;
+  width: number | null;
+  depth: number | null;
+  year: number | null;
+  is_circa: boolean;
+  date_display_override: string | null;
+  edition_number: number | null;
+  edition_total: number | null;
+  is_signed: boolean;
+  signature_notes: string | null;
+  primary_image_url: string | null;
+  primary_image_storage_path: string | null;
+}
+
+export interface AuthenticityCertificate {
+  id: string;
+  artwork_id: string;
+  root_artist_id: string;
+  issued_by: string;
+  certificate_number: string;
+  verification_code: string;
+  version: number;
+  artwork_snapshot: AuthenticityCertificateSnapshot;
+  certificate_hash: string;
+  issued_at: string;
+  revoked_at: string | null;
+  revoked_by: string | null;
+  revocation_reason: string | null;
+  created_at: string;
+}
+
 export interface Collection {
   id: string;
   artist_id: string;

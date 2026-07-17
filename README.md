@@ -50,9 +50,22 @@ supabase/migrations   SQL schema + RLS policies
 Archive Atlas is the system of record for artwork identity; the
 [JGA Studio](https://github.com/kwame89/jga-studio) storefront receives a
 one-way push of each record (title, medium, dimensions, description, tags,
-images, provenance link) via its `atlas-import` Edge Function — full contract
+images, and a read-only provenance snapshot) via its `atlas-import` Edge Function — full contract
 in that repo's `docs/09-archive-atlas-integration.md`. Pricing/availability
 are set in JGA Studio and never touched by pushes.
+
+## Certificates of Authenticity
+
+After running `supabase/migrations/0024_authenticity_certificates.sql`, a
+controller of the root artist can issue a Certificate of Authenticity from an
+artwork page. Each COA is a numbered, immutable snapshot of the canonical
+artwork record with a SHA-256 fingerprint and public QR verification link.
+Issuing an updated version marks the previous certificate as superseded rather
+than overwriting it; revocations also remain publicly visible for audit.
+
+COAs intentionally omit current ownership and artwork value. A certificate
+verifies authorship and object identity, but it is not proof of title, appraisal,
+or market value. The browser print dialog produces a print or PDF copy.
 
 Artists can organize ordered bodies of work under **Collections** after running
 `supabase/migrations/0021_collections.sql`. Collection records, covers, and
@@ -113,7 +126,8 @@ that's intentional.
 
 Phase 0 (core product) is complete and verified: auth/claim flow, artwork records with images
 and rich detail fields, provenance timelines, ownership/custody transfer logging, collaborators,
-a collective dashboard for unclaimed profiles, and print/PDF export. Phase 1 (Stellar testnet
+a collective dashboard for unclaimed profiles, versioned Certificates of Authenticity, and
+print/PDF export. Phase 1 (Stellar testnet
 anchoring of event hashes via the anchor-event Edge Function) is deployed and verified live.
 Phase 2 (Freighter wallet-linking, with wallet-signed anchoring for genesis/ownership_transfer
 events) is built — see SCOPE.md's Phase 2 notes for exactly how it changes anchoring behavior.

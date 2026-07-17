@@ -12,6 +12,8 @@ import { BatchArtworkPage } from "./pages/BatchArtworkPage";
 import { EditArtworkPage } from "./pages/EditArtworkPage";
 import { ArtworkPage } from "./pages/ArtworkPage";
 import { ArtworkPrintPage } from "./pages/ArtworkPrintPage";
+import { CertificatePage } from "./pages/CertificatePage";
+import { CertificateVerificationPage } from "./pages/CertificateVerificationPage";
 import { CatalogPrintPage } from "./pages/CatalogPrintPage";
 import { CollectiveDashboardPage } from "./pages/CollectiveDashboardPage";
 import { MyExhibitionsPage } from "./pages/MyExhibitionsPage";
@@ -77,6 +79,13 @@ function App() {
           <Route path="/artworks/:id" element={<ArtworkPage />} />
           <Route path="/profiles/:id" element={<ProfilePage />} />
           <Route path="/artworks/:id/print" element={<ArtworkPrintPage />} />
+          <Route
+            path="/artworks/:id/certificate"
+            element={
+              <RequireProfile>{(profile) => <CertificatePage profile={profile} />}</RequireProfile>
+            }
+          />
+          <Route path="/verify/:code" element={<CertificateVerificationPage />} />
           <Route path="/catalog/print" element={<CatalogPrintPage />} />
           <Route
             path="/artworks/new"

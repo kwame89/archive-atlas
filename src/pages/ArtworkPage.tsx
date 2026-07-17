@@ -486,10 +486,16 @@ export function ArtworkPage() {
           </Link>
           <div className="record-toolbar-actions">
             {canManage && (
-              <Link to={`/artworks/${artwork.id}/edit`} className="record-edit-link">
-                <Pencil size={16} aria-hidden="true" />
-                Edit details
-              </Link>
+              <>
+                <Link to={`/artworks/${artwork.id}/edit`} className="record-edit-link">
+                  <Pencil size={16} aria-hidden="true" />
+                  Edit details
+                </Link>
+                <Link to={`/artworks/${artwork.id}/certificate`} className="record-certificate-link">
+                  <ShieldCheck size={16} aria-hidden="true" />
+                  Certificate of authenticity
+                </Link>
+              </>
             )}
             <Link to={`/artworks/${artwork.id}/print`} className="record-print-link">
               <Printer size={16} aria-hidden="true" />
