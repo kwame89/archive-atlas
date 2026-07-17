@@ -308,13 +308,22 @@ Deno.serve(async (req) => {
       title: a.title,
       medium: a.medium ?? null,
       dimensions: a.dimensions ?? null,
+      height: a.height ?? null,
+      width: a.width ?? null,
+      depth: a.depth ?? null,
       year: a.year ?? null,
+      is_circa: a.is_circa ?? null,
       edition_number: a.edition_number ?? null,
       edition_total: a.edition_total ?? null,
       description: a.description ?? null,
       tags: Array.isArray(a.tags) ? a.tags : [],
       art_type: a.art_type ?? null,
       subject_matter: a.subject_matter ?? null,
+      is_signed: a.is_signed ?? null,
+      signature_notes: a.signature_notes ?? null,
+      condition: a.condition ?? null,
+      // Atlas artwork value becomes the JGA sale price (JGA can override).
+      artwork_value: a.artwork_value ?? null,
       provenance_url: `${ATLAS_PUBLIC_URL}/artworks/${a.id}`,
       provenance_events: (provenanceRows ?? [])
         .filter((event) => event.artwork_id === a.id)
