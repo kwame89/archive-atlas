@@ -27,7 +27,13 @@ export async function getCertificateByVerificationCode(
     p_verification_code: verificationCode,
   });
   if (error) throw error;
-  return (Array.isArray(data) ? data[0] : data) as AuthenticityCertificate | null;
+
+  const certificate = (Array.isArray(data) ? data[0] : data) as
+    | Partial<AuthenticityCertificate>
+    | null;
+  if (!certificate?.id || !certificate.artwork_snapshot) return null;
+
+  return certificate as AuthenticityCertificate;
 }
 
 export async function issueAuthenticityCertificate(
