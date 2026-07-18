@@ -6,6 +6,11 @@ import { getArtwork, updateArtworkDetails } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
 import { canActFor } from "../lib/profiles";
 import type { Artwork, Profile } from "../types/database";
+import {
+  CLASSIFICATION_OPTIONS,
+  getClassificationOption,
+  validateClassification,
+} from "../lib/classification";
 
 const CONDITION_OPTIONS = ["Excellent", "Good", "Fair", "Poor", "Needs restoration"];
 
@@ -20,6 +25,7 @@ interface ArtworkEditForm {
   year: string;
   isCirca: boolean;
   dateDisplayOverride: string;
+  classification: string;
   editionNumber: string;
   editionTotal: string;
   subjectMatter: string;
@@ -45,6 +51,7 @@ function formFromArtwork(artwork: Artwork): ArtworkEditForm {
     year: artwork.year?.toString() ?? "",
     isCirca: artwork.is_circa,
     dateDisplayOverride: artwork.date_display_override ?? "",
+    classification: artwork.classification ?? "",
     editionNumber: artwork.edition_number?.toString() ?? "",
     editionTotal: artwork.edition_total?.toString() ?? "",
     subjectMatter: artwork.subject_matter ?? "",
@@ -138,6 +145,17 @@ export function EditArtworkPage({ profile }: { profile: Profile }) {
       setError("Artwork value must be zero or greater.");
       return;
     }
+    // Mirrors artworks_classification_valid, so a mismatch reads as a
+    // sentence here rather than as a Postgres constraint violation.
+    const classificationError = validateClassification(
+      textOrNull(form.classification),
+      numberOrNull(form.editionNumber),
+      numberOrNull(form.editionTotal),
+    );
+    if (classificationError) {
+      setError(classificationError);
+      return;
+    }
 
     setSaving(true);
     setError("");
@@ -153,6 +171,7 @@ export function EditArtworkPage({ profile }: { profile: Profile }) {
         year: numberOrNull(form.year),
         isCirca: form.isCirca,
         dateDisplayOverride: textOrNull(form.dateDisplayOverride),
+        classification: textOrNull(form.classification),
         editionNumber: numberOrNull(form.editionNumber),
         editionTotal: numberOrNull(form.editionTotal),
         subjectMatter: textOrNull(form.subjectMatter),
@@ -276,14 +295,45 @@ export function EditArtworkPage({ profile }: { profile: Profile }) {
                     <span>Date display override</span>
                     <input value={form.dateDisplayOverride} onChange={(event) => updateField("dateDisplayOverride", event.target.value)} placeholder="1970s or 2007-2010" />
                   </label>
-                  <label>
-                    <span>Edition number</span>
-                    <input type="number" min="0" value={form.editionNumber} onChange={(event) => updateField("editionNumber", event.target.value)} />
+                  <label className="edit-field-wide">
+                    <span>Classification</span>
+                    <select
+                      value={form.classification}
+                      onChange={(event) => {
+                        const next = getClassificationOption(event.target.value);
+                        updateField("classification", event.target.value);
+                        // Clear edition values the new classification cannot
+                        // hold, so switching to Unique can't leave a stale
+                        // edition number behind and trip the DB constraint.
+                        if (next && !next.allowsEditionNumber) updateField("editionNumber", "");
+                        if (next && !next.allowsEditionTotal) updateField("editionTotal", "");
+                      }}
+                    >
+                      <option value="">Not recorded</option>
+                      {CLASSIFICATION_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                    <small>
+                      {getClassificationOption(form.classification)?.description ??
+                        "Whether this work is one of a kind or part of an edition run. Leave unrecorded rather than guessing — it appears on the certificate of authenticity."}
+                    </small>
                   </label>
-                  <label>
-                    <span>Edition total</span>
-                    <input type="number" min="0" value={form.editionTotal} onChange={(event) => updateField("editionTotal", event.target.value)} />
-                  </label>
+                  {getClassificationOption(form.classification)?.allowsEditionNumber !== false && (
+                    <label>
+                      <span>Edition number</span>
+                      <input type="number" min="0" value={form.editionNumber} onChange={(event) => updateField("editionNumber", event.target.value)} />
+                    </label>
+                  )}
+                  {getClassificationOption(form.classification)?.allowsEditionTotal !== false && (
+                    <label>
+                      <span>
+                        Edition total
+                        {getClassificationOption(form.classification)?.requiresEditionTotal ? " (required)" : ""}
+                      </span>
+                      <input type="number" min="0" value={form.editionTotal} onChange={(event) => updateField("editionTotal", event.target.value)} />
+                    </label>
+                  )}
                 </div>
               </section>
 

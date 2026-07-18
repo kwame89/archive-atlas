@@ -47,6 +47,7 @@ import { ConsignmentManager } from "../components/ConsignmentManager";
 import { ProfileSearchAdd } from "../components/ProfileSearchAdd";
 import { AppHeader } from "../components/AppHeader";
 import type { Artwork, ArtworkEvent, ArtworkImage, Profile } from "../types/database";
+import { formatEditionLabel } from "../lib/classification";
 
 const EVENT_LABELS: Record<ArtworkEvent["type"], string> = {
   genesis: "Created",
@@ -659,11 +660,19 @@ export function ArtworkPage() {
                 <dt>Dimensions</dt>
                 <dd>{dimensionsDisplay ?? "Not recorded"}</dd>
               </div>
-              {(artwork.edition_number != null || artwork.edition_total != null) && (
+              {formatEditionLabel(
+                artwork.classification,
+                artwork.edition_number,
+                artwork.edition_total,
+              ) && (
                 <div>
                   <dt>Edition</dt>
                   <dd>
-                    {artwork.edition_number ?? "–"}/{artwork.edition_total ?? "–"}
+                    {formatEditionLabel(
+                      artwork.classification,
+                      artwork.edition_number,
+                      artwork.edition_total,
+                    )}
                   </dd>
                 </div>
               )}

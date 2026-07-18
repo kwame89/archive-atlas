@@ -315,6 +315,7 @@ Deno.serve(async (req) => {
       is_circa: a.is_circa ?? null,
       edition_number: a.edition_number ?? null,
       edition_total: a.edition_total ?? null,
+      classification: a.classification ?? null,
       description: a.description ?? null,
       tags: Array.isArray(a.tags) ? a.tags : [],
       art_type: a.art_type ?? null,

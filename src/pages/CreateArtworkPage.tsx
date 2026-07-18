@@ -8,6 +8,11 @@ import { useLocalDraft } from "../lib/useLocalDraft";
 import { ArtworkImageUploader } from "../components/ArtworkImageUploader";
 import { ProfileSearchAdd } from "../components/ProfileSearchAdd";
 import type { Profile } from "../types/database";
+import {
+  CLASSIFICATION_OPTIONS,
+  getClassificationOption,
+  validateClassification,
+} from "../lib/classification";
 
 const CONDITION_OPTIONS = ["Excellent", "Good", "Fair", "Poor", "Needs restoration"];
 
@@ -24,6 +29,7 @@ interface ArtworkDraft {
   year: string;
   isCirca: boolean;
   dateDisplayOverride: string;
+  classification: string;
   editionNumber: string;
   editionTotal: string;
   subjectMatter: string;
@@ -52,6 +58,7 @@ function createInitialDraft(): ArtworkDraft {
     year: "",
     isCirca: false,
     dateDisplayOverride: "",
+    classification: "",
     editionNumber: "",
     editionTotal: "",
     subjectMatter: "",
@@ -88,6 +95,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
     year,
     isCirca,
     dateDisplayOverride,
+    classification,
     editionNumber,
     editionTotal,
     subjectMatter,
@@ -132,6 +140,17 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
         throw new Error("Artwork value must be zero or greater.");
       }
 
+      // Mirrors artworks_classification_valid so the mismatch reads as a
+      // sentence rather than a Postgres constraint violation.
+      const classificationError = validateClassification(
+        classification || null,
+        editionNumber ? Number(editionNumber) : null,
+        editionTotal ? Number(editionTotal) : null,
+      );
+      if (classificationError) {
+        throw new Error(classificationError);
+      }
+
       const rootArtistId = onBehalfOfProfile?.id ?? profile.id;
       const artwork = await createArtwork(
         rootArtistId,
@@ -146,6 +165,7 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
           year: year ? Number(year) : undefined,
           isCirca,
           dateDisplayOverride: dateDisplayOverride || undefined,
+          classification: classification || null,
           editionNumber: editionNumber ? Number(editionNumber) : undefined,
           editionTotal: editionTotal ? Number(editionTotal) : undefined,
           subjectMatter: subjectMatter || undefined,
@@ -452,21 +472,56 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
           placeholder={'For imprecise dates, e.g. "1970s" or "2007-2010"'}
         />
 
-        <label htmlFor="editionNumber">Edition number (if applicable)</label>
-        <input
-          id="editionNumber"
-          type="number"
-          value={editionNumber}
-          onChange={(e) => updateDraft("editionNumber", e.target.value)}
-        />
+        <label htmlFor="classification">Classification</label>
+        <select
+          id="classification"
+          value={classification}
+          onChange={(e) => {
+            const next = getClassificationOption(e.target.value);
+            updateDraft("classification", e.target.value);
+            // Drop edition values the new classification cannot hold.
+            if (next && !next.allowsEditionNumber) updateDraft("editionNumber", "");
+            if (next && !next.allowsEditionTotal) updateDraft("editionTotal", "");
+          }}
+        >
+          <option value="">Not recorded</option>
+          {CLASSIFICATION_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+        <p className="field-hint">
+          {getClassificationOption(classification)?.description ??
+            "Whether this work is one of a kind or part of an edition run. It appears on the certificate of authenticity, so leave it unrecorded rather than guessing."}
+        </p>
 
-        <label htmlFor="editionTotal">Edition total (if applicable)</label>
-        <input
-          id="editionTotal"
-          type="number"
-          value={editionTotal}
-          onChange={(e) => updateDraft("editionTotal", e.target.value)}
-        />
+        {getClassificationOption(classification)?.allowsEditionNumber !== false && (
+          <>
+            <label htmlFor="editionNumber">Edition number (if applicable)</label>
+            <input
+              id="editionNumber"
+              type="number"
+              value={editionNumber}
+              onChange={(e) => updateDraft("editionNumber", e.target.value)}
+            />
+          </>
+        )}
+
+        {getClassificationOption(classification)?.allowsEditionTotal !== false && (
+          <>
+            <label htmlFor="editionTotal">
+              Edition total
+              {getClassificationOption(classification)?.requiresEditionTotal
+                ? " (required)"
+                : " (if applicable)"}
+            </label>
+            <input
+              id="editionTotal"
+              type="number"
+              value={editionTotal}
+              onChange={(e) => updateDraft("editionTotal", e.target.value)}
+            />
+          </>
+        )}
 
         <h2 className="section-heading">Private notes</h2>
         <label htmlFor="privateNotes">Notes — always private</label>

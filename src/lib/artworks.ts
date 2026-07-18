@@ -14,6 +14,7 @@ export interface CreateArtworkInput {
   dateDisplayOverride?: string;
   editionNumber?: number;
   editionTotal?: number;
+  classification?: string | null;
   description?: string;
   tags?: string[];
   subjectMatter?: string;
@@ -45,6 +46,7 @@ export interface UpdateArtworkDetailsInput {
   dateDisplayOverride: string | null;
   editionNumber: number | null;
   editionTotal: number | null;
+  classification: string | null;
   description: string | null;
   tags: string[] | null;
   subjectMatter: string | null;
@@ -87,6 +89,7 @@ export async function createArtwork(
       date_display_override: input.dateDisplayOverride || null,
       edition_number: input.editionNumber ?? null,
       edition_total: input.editionTotal ?? null,
+      classification: input.classification ?? null,
       description: input.description || null,
       tags: input.tags && input.tags.length > 0 ? input.tags : null,
       subject_matter: input.subjectMatter || null,
@@ -149,6 +152,7 @@ export async function updateArtworkDetails(
       date_display_override: input.dateDisplayOverride,
       edition_number: input.editionNumber,
       edition_total: input.editionTotal,
+      classification: input.classification,
       description: input.description,
       tags: input.tags && input.tags.length > 0 ? input.tags : null,
       subject_matter: input.subjectMatter,

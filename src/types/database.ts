@@ -53,6 +53,7 @@ export interface Artwork {
   date_display_override: string | null;
   edition_number: number | null;
   edition_total: number | null;
+  classification: string | null;
   description: string | null;
   tags: string[] | null;
   subject_matter: string | null;
@@ -109,6 +110,7 @@ export interface AuthenticityCertificateSnapshot {
   date_display_override: string | null;
   edition_number: number | null;
   edition_total: number | null;
+  classification: string | null;
   is_signed: boolean;
   signature_notes: string | null;
   primary_image_url: string | null;
