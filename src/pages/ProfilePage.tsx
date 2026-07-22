@@ -1,17 +1,27 @@
 import { useEffect, useState, type FormEvent } from "react";
 import {
+  BadgeCheck,
   CheckCircle2,
   ExternalLink,
+  FileText,
+  Mail,
+  MapPin,
+  Pencil,
   RefreshCw,
   Unplug,
+  UserCheck,
+  UserPlus,
   Wallet,
 } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../lib/authContext";
 import {
   canActFor,
+  followProfile,
   getMyProfile,
   getProfile,
+  isFollowingProfile,
+  unfollowProfile,
   updateProfile,
   uploadProfileMedia,
 } from "../lib/profiles";
@@ -24,6 +34,7 @@ import {
 } from "../lib/stellarWallet";
 import { getErrorMessage } from "../lib/errors";
 import { artworkPath, profilePath, recordIdFromRoute } from "../lib/recordRoutes";
+import { normalizeSpecialties, PROFILE_TYPE_LABELS } from "../lib/profilePresentation";
 import { AppHeader } from "../components/AppHeader";
 import type { Artwork, Profile } from "../types/database";
 
@@ -49,7 +60,12 @@ export function ProfilePage() {
   const [error, setError] = useState("");
 
   const [editing, setEditing] = useState(false);
+  const [displayNameDraft, setDisplayNameDraft] = useState("");
   const [bioDraft, setBioDraft] = useState("");
+  const [headlineDraft, setHeadlineDraft] = useState("");
+  const [locationDraft, setLocationDraft] = useState("");
+  const [specialtiesDraft, setSpecialtiesDraft] = useState("");
+  const [publicEmailDraft, setPublicEmailDraft] = useState("");
   const [websiteDraft, setWebsiteDraft] = useState("");
   const [legalNameDraft, setLegalNameDraft] = useState("");
   const [isPublicDraft, setIsPublicDraft] = useState(true);
@@ -62,11 +78,17 @@ export function ProfilePage() {
   const [linkingWallet, setLinkingWallet] = useState(false);
   const [disconnectingWallet, setDisconnectingWallet] = useState(false);
   const [linkWalletError, setLinkWalletError] = useState("");
+  const [following, setFollowing] = useState(false);
+  const [followSaving, setFollowSaving] = useState(false);
+  const [followError, setFollowError] = useState("");
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
     setError("");
+    setCanEdit(false);
+    setFollowing(false);
+    setFollowError("");
     (async () => {
       const profileResult = await getProfile(id);
       setProfile(profileResult);
@@ -85,6 +107,13 @@ export function ProfilePage() {
             ? await isController(profileResult.id, mine.id)
             : await canActFor(profileResult.id, mine.id)
         );
+        if (mine.id !== profileResult.id) {
+          try {
+            setFollowing(await isFollowingProfile(mine.id, profileResult.id));
+          } catch (err) {
+            console.error("Follow status could not be loaded:", err);
+          }
+        }
       }
     })()
       .catch((err) => setError(getErrorMessage(err)))
@@ -101,7 +130,12 @@ export function ProfilePage() {
 
   function startEditing() {
     if (!profile) return;
+    setDisplayNameDraft(profile.display_name);
     setBioDraft(profile.bio ?? "");
+    setHeadlineDraft(profile.headline ?? "");
+    setLocationDraft(profile.location ?? "");
+    setSpecialtiesDraft((profile.specialties ?? []).join(", "));
+    setPublicEmailDraft(profile.public_email ?? "");
     setWebsiteDraft(profile.website_url ?? "");
     setLegalNameDraft(profile.legal_name ?? "");
     setIsPublicDraft(profile.is_public);
@@ -116,7 +150,12 @@ export function ProfilePage() {
     setEditError("");
     try {
       const updated = await updateProfile(profile.id, {
+        displayName: displayNameDraft,
         bio: bioDraft,
+        headline: headlineDraft,
+        location: locationDraft,
+        specialties: normalizeSpecialties(specialtiesDraft),
+        publicEmail: publicEmailDraft,
         websiteUrl: websiteDraft,
         legalName: legalNameDraft,
         isPublic: isPublicDraft,
@@ -127,6 +166,25 @@ export function ProfilePage() {
       setEditError(getErrorMessage(err));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleFollowToggle() {
+    if (!profile || !myProfile || myProfile.id === profile.id) return;
+    setFollowSaving(true);
+    setFollowError("");
+    try {
+      if (following) {
+        await unfollowProfile(myProfile.id, profile.id);
+        setFollowing(false);
+      } else {
+        await followProfile(myProfile.id, profile.id);
+        setFollowing(true);
+      }
+    } catch (err) {
+      setFollowError(getErrorMessage(err));
+    } finally {
+      setFollowSaving(false);
     }
   }
 
@@ -216,266 +274,392 @@ export function ProfilePage() {
     <div className="page-wide">
       <AppHeader profile={myProfile} />
 
-      <div className="profile-header">
-        {profile.avatar_url ? (
-          <img src={profile.avatar_url} alt={profile.display_name} className="avatar" />
-        ) : (
-          <div className="avatar avatar-placeholder" aria-hidden="true">
-            {profile.display_name.slice(0, 1).toUpperCase()}
+      <main className="public-profile-page">
+        <section className="public-profile-hero">
+          <div className="public-profile-avatar-wrap">
+            {profile.avatar_url ? (
+              <img src={profile.avatar_url} alt={profile.display_name} className="public-profile-avatar" />
+            ) : (
+              <div className="public-profile-avatar public-profile-avatar-placeholder" aria-hidden="true">
+                {profile.display_name.slice(0, 1).toUpperCase()}
+              </div>
+            )}
+          </div>
+
+          <div className="public-profile-identity">
+            <p className="eyebrow">{PROFILE_TYPE_LABELS[profile.type]}</p>
+            <h1>{profile.display_name}</h1>
+            {profile.headline && <p className="public-profile-headline">{profile.headline}</p>}
+
+            <div className="public-profile-meta">
+              {profile.location && (
+                <span>
+                  <MapPin size={15} aria-hidden="true" />
+                  {profile.location}
+                </span>
+              )}
+              <span>
+                <BadgeCheck size={15} aria-hidden="true" />
+                {TIER_LABELS[profile.trust_tier]}
+              </span>
+            </div>
+
+            {(profile.specialties ?? []).length > 0 && (
+              <div className="public-profile-specialties" aria-label="Specialties">
+                {profile.specialties.map((specialty) => (
+                  <span key={specialty}>{specialty}</span>
+                ))}
+              </div>
+            )}
+
+            <div className="public-profile-actions">
+              {profile.website_url && (
+                <a href={profile.website_url} target="_blank" rel="noopener noreferrer">
+                  Website
+                  <ExternalLink size={15} aria-hidden="true" />
+                </a>
+              )}
+              {profile.public_email && (
+                <a href={`mailto:${profile.public_email}`}>
+                  Contact
+                  <Mail size={15} aria-hidden="true" />
+                </a>
+              )}
+              {profile.cv_url && (
+                <a href={profile.cv_url} target="_blank" rel="noopener noreferrer">
+                  CV
+                  <FileText size={15} aria-hidden="true" />
+                </a>
+              )}
+              {myProfile && myProfile.id !== profile.id && profile.is_public && (
+                <button
+                  type="button"
+                  className={following ? "is-following" : ""}
+                  disabled={followSaving}
+                  onClick={handleFollowToggle}
+                >
+                  {following ? <UserCheck size={16} aria-hidden="true" /> : <UserPlus size={16} aria-hidden="true" />}
+                  {followSaving ? "Saving…" : following ? "Following" : "Follow"}
+                </button>
+              )}
+              {!session && profile.is_public && (
+                <Link to="/#get-started">
+                  <UserPlus size={16} aria-hidden="true" />
+                  Sign in to follow
+                </Link>
+              )}
+              {canEdit && !editing && (
+                <button type="button" onClick={startEditing}>
+                  <Pencil size={15} aria-hidden="true" />
+                  Edit profile
+                </button>
+              )}
+            </div>
+            {followError && <p className="error public-profile-action-error">{followError}</p>}
+          </div>
+        </section>
+
+        {profile.trust_tier === "unclaimed" && (
+          <div className="public-profile-notice">
+            This community record has not yet been claimed by the person or organization named.
           </div>
         )}
-        <div className="profile-identity">
-          <h1>{profile.display_name}</h1>
-          <p className="muted">
-            {profile.type} · <span className="tier-badge">{TIER_LABELS[profile.trust_tier]}</span>
-            {profile.legal_name && ` · ${profile.legal_name}`}
-          </p>
-          {profile.trust_tier === "unclaimed" && (
-            <p className="muted">
-              This is a placeholder profile created on the artist's behalf — they haven't claimed
-              it yet.
-            </p>
-          )}
-          {profile.website_url && (
-            <p>
-              <a href={profile.website_url} target="_blank" rel="noopener noreferrer">
-                {profile.website_url}
-              </a>
-            </p>
-          )}
-          {profile.cv_url && (
-            <p>
-              <a href={profile.cv_url} target="_blank" rel="noopener noreferrer">
-                View CV →
-              </a>
-            </p>
-          )}
-          {canEdit && (
-            <section className="wallet-account" aria-labelledby="stellar-wallet-heading">
-              <div className="wallet-account-icon" aria-hidden="true">
-                <Wallet size={20} strokeWidth={1.7} />
-              </div>
-              <div className="wallet-account-body">
-                <header className="wallet-account-heading">
-                  <div>
-                    <span>Stellar identity</span>
-                    <h2 id="stellar-wallet-heading">Wallet</h2>
+
+        {canEdit && !profile.is_public && (
+          <div className="public-profile-notice is-private">
+            This profile is private. Only authorized account managers can view it.
+          </div>
+        )}
+
+        {canEdit && editing && (
+          <form onSubmit={handleSave} className="profile-edit public-profile-editor">
+            <header>
+              <p className="eyebrow">Profile settings</p>
+              <h2>Edit public profile</h2>
+              <p>These details help artists, curators, galleries, and institutions find your work.</p>
+            </header>
+
+            <div className="public-profile-edit-grid">
+              <label htmlFor="displayNameEdit">
+                Display name
+                <input
+                  id="displayNameEdit"
+                  required
+                  value={displayNameDraft}
+                  onChange={(event) => setDisplayNameDraft(event.target.value)}
+                />
+              </label>
+              <label htmlFor="headlineEdit">
+                Headline
+                <input
+                  id="headlineEdit"
+                  value={headlineDraft}
+                  maxLength={140}
+                  onChange={(event) => setHeadlineDraft(event.target.value)}
+                  placeholder="Artist exploring memory, migration, and place"
+                />
+              </label>
+              <label htmlFor="locationEdit">
+                Public location
+                <input
+                  id="locationEdit"
+                  value={locationDraft}
+                  onChange={(event) => setLocationDraft(event.target.value)}
+                  placeholder="Newark, New Jersey"
+                />
+              </label>
+              <label htmlFor="publicEmailEdit">
+                Public contact email
+                <input
+                  id="publicEmailEdit"
+                  type="email"
+                  value={publicEmailDraft}
+                  onChange={(event) => setPublicEmailDraft(event.target.value)}
+                  placeholder="studio@example.com"
+                />
+              </label>
+              <label htmlFor="website" className="public-profile-edit-wide">
+                Website
+                <input
+                  id="website"
+                  type="url"
+                  value={websiteDraft}
+                  onChange={(event) => setWebsiteDraft(event.target.value)}
+                  placeholder="https://example.com"
+                />
+              </label>
+              <label htmlFor="specialtiesEdit" className="public-profile-edit-wide">
+                Specialties
+                <input
+                  id="specialtiesEdit"
+                  value={specialtiesDraft}
+                  onChange={(event) => setSpecialtiesDraft(event.target.value)}
+                  placeholder="Painting, public art, Caribbean diaspora"
+                />
+                <small>Separate up to 12 specialties with commas.</small>
+              </label>
+              <label htmlFor="bio" className="public-profile-edit-wide">
+                Biography or overview
+                <textarea id="bio" value={bioDraft} onChange={(event) => setBioDraft(event.target.value)} />
+              </label>
+            </div>
+
+            <div className="public-profile-media-fields">
+              <label htmlFor="avatarUpload">
+                Profile image
+                <input
+                  id="avatarUpload"
+                  type="file"
+                  accept="image/*"
+                  disabled={uploadingAvatar}
+                  onChange={(event) => handleUpload(event.target.files?.[0], "avatar")}
+                />
+              </label>
+              <label htmlFor="cvUpload">
+                CV (PDF)
+                <input
+                  id="cvUpload"
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  disabled={uploadingCv}
+                  onChange={(event) => handleUpload(event.target.files?.[0], "cv")}
+                />
+              </label>
+            </div>
+
+            <details className="public-profile-private-settings">
+              <summary>Private account details</summary>
+              <label htmlFor="legalNameEdit">
+                Legal / business name
+                <input
+                  id="legalNameEdit"
+                  value={legalNameDraft}
+                  onChange={(event) => setLegalNameDraft(event.target.value)}
+                />
+              </label>
+            </details>
+
+            <label htmlFor="isPublic" className="public-profile-visibility">
+              <input
+                id="isPublic"
+                type="checkbox"
+                checked={isPublicDraft}
+                onChange={(event) => setIsPublicDraft(event.target.checked)}
+              />
+              <span>
+                <strong>Show this profile in the public directory</strong>
+                <small>
+                  Collectors remain private by default. Turning this off hides your identity from
+                  public search without removing provenance records.
+                </small>
+              </span>
+            </label>
+
+            <div className="public-profile-edit-actions">
+              <button type="submit" disabled={saving}>
+                {saving ? "Saving…" : "Save profile"}
+              </button>
+              <button type="button" className="secondary" onClick={() => setEditing(false)}>
+                Cancel
+              </button>
+            </div>
+            {editError && <p className="error">{editError}</p>}
+          </form>
+        )}
+
+        {canEdit && (
+          <section className="wallet-account" aria-labelledby="stellar-wallet-heading">
+            <div className="wallet-account-icon" aria-hidden="true">
+              <Wallet size={20} strokeWidth={1.7} />
+            </div>
+            <div className="wallet-account-body">
+              <header className="wallet-account-heading">
+                <div>
+                  <span>Private account administration</span>
+                  <h2 id="stellar-wallet-heading">Stellar identity</h2>
+                </div>
+                <span className={`wallet-account-status${profile.linked_wallet ? " is-connected" : ""}`}>
+                  {profile.linked_wallet && <CheckCircle2 size={14} aria-hidden="true" />}
+                  {profile.linked_wallet
+                    ? `Connected to ${STELLAR_NETWORK === "mainnet" ? "Stellar mainnet" : "testnet"}`
+                    : "Not connected"}
+                </span>
+              </header>
+              {profile.linked_wallet ? (
+                <>
+                  <div className="wallet-address-row">
+                    <code>{profile.linked_wallet.slice(0, 8)}…{profile.linked_wallet.slice(-8)}</code>
+                    <a
+                      href={`${STELLAR_EXPERT_BASE}/account/${profile.linked_wallet}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="View this account on Stellar Expert"
+                    >
+                      Explorer
+                      <ExternalLink size={13} aria-hidden="true" />
+                    </a>
                   </div>
-                  <span
-                    className={`wallet-account-status${profile.linked_wallet ? " is-connected" : ""}`}
-                  >
-                    {profile.linked_wallet && <CheckCircle2 size={14} aria-hidden="true" />}
-                    {profile.linked_wallet
-                      ? `Connected to ${STELLAR_NETWORK === "mainnet" ? "Stellar mainnet" : "testnet"}`
-                      : "Not connected"}
-                  </span>
-                </header>
-
-                {profile.linked_wallet ? (
-                  <>
-                    <div className="wallet-address-row">
-                      <code>
-                        {profile.linked_wallet.slice(0, 8)}…{profile.linked_wallet.slice(-8)}
-                      </code>
-                      <a
-                        href={`${STELLAR_EXPERT_BASE}/account/${profile.linked_wallet}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="View this account on Stellar Expert"
-                      >
-                        Explorer
-                        <ExternalLink size={13} aria-hidden="true" />
-                      </a>
-                    </div>
-                    <p className="wallet-account-meta">Artist-controlled signing is active.</p>
-                  </>
-                ) : (
-                  <p className="wallet-account-meta">
-                    Supports Freighter, Albedo, Rabet, LOBSTR, and Hana.
-                  </p>
-                )}
-                {linkWalletError && <p className="error wallet-account-error">{linkWalletError}</p>}
-              </div>
-
-              <div className="wallet-account-actions">
-                {profile.linked_wallet ? (
-                  <>
-                    <button
-                      type="button"
-                      className="secondary"
-                      disabled={linkingWallet || disconnectingWallet}
-                      onClick={handleLinkWallet}
-                    >
-                      <RefreshCw size={15} aria-hidden="true" />
-                      {linkingWallet ? "Linking…" : "Change wallet"}
-                    </button>
-                    <button
-                      type="button"
-                      className="wallet-disconnect-button"
-                      disabled={linkingWallet || disconnectingWallet}
-                      onClick={handleDisconnectWallet}
-                    >
-                      <Unplug size={15} aria-hidden="true" />
-                      {disconnectingWallet ? "Disconnecting…" : "Disconnect"}
-                    </button>
-                  </>
-                ) : (
+                  <p className="wallet-account-meta">Profile-controlled signing is active.</p>
+                </>
+              ) : (
+                <p className="wallet-account-meta">Supports Freighter, Albedo, Rabet, LOBSTR, and Hana.</p>
+              )}
+              {linkWalletError && <p className="error wallet-account-error">{linkWalletError}</p>}
+            </div>
+            <div className="wallet-account-actions">
+              {profile.linked_wallet ? (
+                <>
                   <button
                     type="button"
                     className="secondary"
-                    disabled={linkingWallet}
+                    disabled={linkingWallet || disconnectingWallet}
                     onClick={handleLinkWallet}
                   >
-                    <Wallet size={15} aria-hidden="true" />
-                    {linkingWallet ? "Linking…" : "Link wallet"}
+                    <RefreshCw size={15} aria-hidden="true" />
+                    {linkingWallet ? "Linking…" : "Change wallet"}
                   </button>
-                )}
-              </div>
-            </section>
-          )}
-        </div>
-      </div>
-
-      {profile.bio && <p className="profile-bio">{profile.bio}</p>}
-
-      {canEdit && !editing && (
-        <>
-          {!profile.is_public && (
-            <p className="muted">Your profile is private — hidden from other visitors.</p>
-          )}
-          <button type="button" className="secondary" onClick={startEditing}>
-            Edit profile
-          </button>
-        </>
-      )}
-
-      {canEdit && editing && (
-        <form onSubmit={handleSave} className="profile-edit">
-          <label htmlFor="bio">Bio</label>
-          <textarea id="bio" value={bioDraft} onChange={(e) => setBioDraft(e.target.value)} />
-
-          <label htmlFor="website">Website</label>
-          <input
-            id="website"
-            type="url"
-            value={websiteDraft}
-            onChange={(e) => setWebsiteDraft(e.target.value)}
-            placeholder="https://…"
-          />
-
-          <label htmlFor="legalNameEdit">Legal / business name</label>
-          <input
-            id="legalNameEdit"
-            value={legalNameDraft}
-            onChange={(e) => setLegalNameDraft(e.target.value)}
-          />
-
-          <label htmlFor="avatarUpload">Profile picture</label>
-          <input
-            id="avatarUpload"
-            type="file"
-            accept="image/*"
-            disabled={uploadingAvatar}
-            onChange={(e) => handleUpload(e.target.files?.[0], "avatar")}
-          />
-
-          <label htmlFor="cvUpload">CV (PDF)</label>
-          <input
-            id="cvUpload"
-            type="file"
-            accept=".pdf,application/pdf"
-            disabled={uploadingCv}
-            onChange={(e) => handleUpload(e.target.files?.[0], "cv")}
-          />
-
-          <label htmlFor="isPublic">
-            <input
-              id="isPublic"
-              type="checkbox"
-              checked={isPublicDraft}
-              onChange={(e) => setIsPublicDraft(e.target.checked)}
-            />{" "}
-            Publicly visible profile
-          </label>
-          <p className="muted">
-            When off, your name is hidden from other visitors — collectors often keep this off.
-            Transfers involving you still show up in a piece's public provenance record, just
-            without your identity attached. The artist can always see who owns their work,
-            regardless of this setting.
-          </p>
-
-          <button type="submit" disabled={saving}>
-            {saving ? "Saving…" : "Save"}
-          </button>
-          <button type="button" className="secondary" onClick={() => setEditing(false)}>
-            Cancel
-          </button>
-          {editError && <p className="error">{editError}</p>}
-        </form>
-      )}
-
-      <div className="artworks-header">
-        <h2 className="section-heading">Artworks</h2>
-        {canEdit && artworks.length > 0 && !selectingForCatalog && (
-          <button type="button" className="secondary" onClick={startCatalogSelection}>
-            Select for catalog
-          </button>
-        )}
-        {selectingForCatalog && (
-          <div className="catalog-selection-bar">
-            <button
-              type="button"
-              disabled={selectedForCatalog.length === 0}
-              onClick={handleGenerateCatalog}
-            >
-              Generate catalog ({selectedForCatalog.length})
-            </button>
-            <button type="button" className="secondary" onClick={cancelCatalogSelection}>
-              Cancel
-            </button>
-          </div>
-        )}
-      </div>
-      {artworks.length === 0 && <p className="muted">No artworks yet.</p>}
-      <ul className="artwork-grid">
-        {artworks.map((artwork) => {
-          const thumb = thumbnails[artwork.id] ? (
-            <img src={thumbnails[artwork.id]} alt={artwork.title} />
-          ) : (
-            <div className="thumb-placeholder" aria-hidden="true" />
-          );
-          const caption = (
-            <>
-              <span>{artwork.title}</span>
-              <span className="muted">
-                {[artwork.medium, artwork.year].filter(Boolean).join(" · ")}
-              </span>
-            </>
-          );
-
-          return (
-            <li key={artwork.id}>
-              {selectingForCatalog ? (
-                <button
-                  type="button"
-                  className={`artwork-tile-select${
-                    selectedForCatalog.includes(artwork.id) ? " selected" : ""
-                  }`}
-                  onClick={() => toggleCatalogSelection(artwork.id)}
-                >
-                  {thumb}
-                  {caption}
-                </button>
+                  <button
+                    type="button"
+                    className="wallet-disconnect-button"
+                    disabled={linkingWallet || disconnectingWallet}
+                    onClick={handleDisconnectWallet}
+                  >
+                    <Unplug size={15} aria-hidden="true" />
+                    {disconnectingWallet ? "Disconnecting…" : "Disconnect"}
+                  </button>
+                </>
               ) : (
-                <Link to={artworkPath(artwork)}>
-                  {thumb}
-                  {caption}
-                </Link>
+                <button type="button" className="secondary" disabled={linkingWallet} onClick={handleLinkWallet}>
+                  <Wallet size={15} aria-hidden="true" />
+                  {linkingWallet ? "Linking…" : "Link wallet"}
+                </button>
               )}
-            </li>
-          );
-        })}
-      </ul>
+            </div>
+          </section>
+        )}
+
+        {(profile.bio || canEdit) && (
+          <section className="public-profile-about">
+            <p className="eyebrow">About</p>
+            <h2>{PROFILE_TYPE_LABELS[profile.type]} profile</h2>
+            {profile.bio ? (
+              <p className="profile-bio">{profile.bio}</p>
+            ) : (
+              <p className="muted">Add a biography or overview to complete this public profile.</p>
+            )}
+          </section>
+        )}
+
+        {(artworks.length > 0 || canEdit) && (
+          <section className="public-profile-works">
+            <div className="artworks-header public-profile-works-heading">
+              <div>
+                <p className="eyebrow">Archive</p>
+                <h2 className="section-heading">Artworks</h2>
+              </div>
+              {canEdit && artworks.length > 0 && !selectingForCatalog && (
+                <button type="button" className="secondary" onClick={startCatalogSelection}>
+                  Select for catalog
+                </button>
+              )}
+              {selectingForCatalog && (
+                <div className="catalog-selection-bar">
+                  <button
+                    type="button"
+                    disabled={selectedForCatalog.length === 0}
+                    onClick={handleGenerateCatalog}
+                  >
+                    Generate catalog ({selectedForCatalog.length})
+                  </button>
+                  <button type="button" className="secondary" onClick={cancelCatalogSelection}>
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+            {artworks.length === 0 && <p className="muted">No artworks yet.</p>}
+            <ul className="artwork-grid">
+              {artworks.map((artwork) => {
+                const thumb = thumbnails[artwork.id] ? (
+                  <img src={thumbnails[artwork.id]} alt={artwork.title} />
+                ) : (
+                  <div className="thumb-placeholder" aria-hidden="true" />
+                );
+                const caption = (
+                  <>
+                    <span>{artwork.title}</span>
+                    <span className="muted">
+                      {[artwork.medium, artwork.year].filter(Boolean).join(" · ")}
+                    </span>
+                  </>
+                );
+
+                return (
+                  <li key={artwork.id}>
+                    {selectingForCatalog ? (
+                      <button
+                        type="button"
+                        className={`artwork-tile-select${
+                          selectedForCatalog.includes(artwork.id) ? " selected" : ""
+                        }`}
+                        onClick={() => toggleCatalogSelection(artwork.id)}
+                      >
+                        {thumb}
+                        {caption}
+                      </button>
+                    ) : (
+                      <Link to={artworkPath(artwork)}>
+                        {thumb}
+                        {caption}
+                      </Link>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+      </main>
     </div>
   );
 }

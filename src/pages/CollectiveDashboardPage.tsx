@@ -64,6 +64,8 @@ export function CollectiveDashboardPage({ profile }: { profile: Profile }) {
           <option value="artist">Artist</option>
           <option value="collective">Collective / Studio</option>
           <option value="gallery">Gallery</option>
+          <option value="curator">Curator</option>
+          <option value="institution">Institution</option>
         </select>
 
         <label htmlFor="legalName">Legal / business name (optional)</label>

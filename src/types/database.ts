@@ -1,4 +1,10 @@
-export type ProfileType = "artist" | "collective" | "gallery" | "curator" | "collector";
+export type ProfileType =
+  | "artist"
+  | "collective"
+  | "gallery"
+  | "curator"
+  | "collector"
+  | "institution";
 
 export type TrustTier = "unclaimed" | "claimed" | "wallet_linked" | "entity";
 
@@ -35,6 +41,10 @@ export interface Profile {
   bio: string | null;
   website_url: string | null;
   cv_url: string | null;
+  headline: string | null;
+  location: string | null;
+  specialties: string[];
+  public_email: string | null;
   created_at: string;
 }
 
@@ -42,6 +52,12 @@ export interface ProfileController {
   profile_id: string;
   controller_profile_id: string;
   added_at: string;
+}
+
+export interface ProfileFollow {
+  follower_profile_id: string;
+  followed_profile_id: string;
+  created_at: string;
 }
 
 export interface Artwork {

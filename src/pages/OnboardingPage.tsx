@@ -97,6 +97,7 @@ function CreateProfileForm({
           <option value="collective">Collective / Studio</option>
           <option value="gallery">Gallery</option>
           <option value="curator">Curator</option>
+          <option value="institution">Institution</option>
           <option value="collector">Collector</option>
         </select>
 

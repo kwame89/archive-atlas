@@ -19,6 +19,7 @@ import { CollectiveDashboardPage } from "./pages/CollectiveDashboardPage";
 import { MyExhibitionsPage } from "./pages/MyExhibitionsPage";
 import { CollectionsPage } from "./pages/CollectionsPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { DirectoryPage } from "./pages/DirectoryPage";
 import type { Profile } from "./types/database";
 import "./App.css";
 
@@ -78,6 +79,7 @@ function App() {
           />
           <Route path="/artworks/:id" element={<ArtworkPage />} />
           <Route path="/profiles/:id" element={<ProfilePage />} />
+          <Route path="/directory" element={<DirectoryPage />} />
           <Route path="/artworks/:id/print" element={<ArtworkPrintPage />} />
           <Route
             path="/artworks/:id/certificate"

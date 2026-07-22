@@ -10,6 +10,55 @@ export async function getProfile(id: string): Promise<Profile | null> {
   return data;
 }
 
+export async function listPublicProfiles(): Promise<Profile[]> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("is_public", true)
+    .order("display_name", { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function isFollowingProfile(
+  followerProfileId: string,
+  followedProfileId: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("profile_follows")
+    .select("followed_profile_id")
+    .eq("follower_profile_id", followerProfileId)
+    .eq("followed_profile_id", followedProfileId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return Boolean(data);
+}
+
+export async function followProfile(
+  followerProfileId: string,
+  followedProfileId: string
+): Promise<void> {
+  const { error } = await supabase.from("profile_follows").insert({
+    follower_profile_id: followerProfileId,
+    followed_profile_id: followedProfileId,
+  });
+  if (error) throw error;
+}
+
+export async function unfollowProfile(
+  followerProfileId: string,
+  followedProfileId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("profile_follows")
+    .delete()
+    .eq("follower_profile_id", followerProfileId)
+    .eq("followed_profile_id", followedProfileId);
+  if (error) throw error;
+}
+
 /** Batch lookup of trust tier + linked wallet, for deciding per-event whether
  * an actor is eligible for wallet-signed anchoring (see stellarWallet.ts). */
 export async function getWalletInfo(
@@ -90,6 +139,10 @@ export interface UpdateProfileInput {
   legalName?: string | null;
   bio?: string | null;
   websiteUrl?: string | null;
+  headline?: string | null;
+  location?: string | null;
+  specialties?: string[];
+  publicEmail?: string | null;
   /** Whether this profile is publicly visible — see SCOPE.md's "Collector
    * privacy" design decision. Defaults to false for collectors at creation;
    * this lets them (or any profile type) change it later. */
@@ -102,6 +155,10 @@ export async function updateProfile(profileId: string, input: UpdateProfileInput
   if (input.legalName !== undefined) updates.legal_name = input.legalName || null;
   if (input.bio !== undefined) updates.bio = input.bio || null;
   if (input.websiteUrl !== undefined) updates.website_url = input.websiteUrl || null;
+  if (input.headline !== undefined) updates.headline = input.headline || null;
+  if (input.location !== undefined) updates.location = input.location || null;
+  if (input.specialties !== undefined) updates.specialties = input.specialties;
+  if (input.publicEmail !== undefined) updates.public_email = input.publicEmail || null;
   if (input.isPublic !== undefined) updates.is_public = input.isPublic;
 
   const { data, error } = await supabase

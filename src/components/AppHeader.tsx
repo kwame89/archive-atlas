@@ -1,5 +1,6 @@
 import {
   CalendarRange,
+  Compass,
   Images,
   Layers,
   LogOut,
@@ -63,6 +64,10 @@ export function AppHeader({
             <Images size={16} strokeWidth={1.8} aria-hidden="true" />
             Artworks
           </Link>
+          <Link to="/directory" className={navClass("/directory")}>
+            <Compass size={16} strokeWidth={1.8} aria-hidden="true" />
+            Directory
+          </Link>
           <Link to={profilePath(profile)} className={navClass(profilePath(profile))}>
             <UserRound size={16} strokeWidth={1.8} aria-hidden="true" />
             Profile
@@ -90,12 +95,15 @@ export function AppHeader({
         </nav>
       ) : publicActions ? (
         <nav aria-label="Public navigation">
-          <a href="#principles" className="nav-link">
+          <Link to="/directory" className={navClass("/directory")}>
+            Directory
+          </Link>
+          <Link to="/#principles" className="nav-link">
             Principles
-          </a>
-          <a href="#get-started" className="nav-link nav-primary">
+          </Link>
+          <Link to="/#get-started" className="nav-link nav-primary">
             Get started
-          </a>
+          </Link>
         </nav>
       ) : null}
     </header>
