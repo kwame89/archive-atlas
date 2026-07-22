@@ -205,5 +205,9 @@ export interface ArtworkEvent {
   corroborated_at: string | null;
   condition_rating: string | null;
   wallet_signed: boolean;
+  updated_at: string;
+  voided_at: string | null;
+  voided_by: string | null;
+  void_reason: string | null;
   created_at: string;
 }

@@ -12,7 +12,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   getArtworkEventCount,
   getPrimaryImageUrls,
@@ -63,6 +63,7 @@ function formatEventDate(value: string): string {
 }
 
 export function HomePage({ profile }: { profile: Profile }) {
+  const location = useLocation();
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const [recentEvents, setRecentEvents] = useState<RecentArtworkEvent[]>([]);
@@ -103,6 +104,13 @@ export function HomePage({ profile }: { profile: Profile }) {
       cancelled = true;
     };
   }, [profile.id]);
+
+  useEffect(() => {
+    if (location.hash !== "#artworks" || loading) return;
+    requestAnimationFrame(() => {
+      document.getElementById("artworks")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [loading, location.hash]);
 
   const archiveRecords = useMemo(
     () =>
@@ -312,7 +320,7 @@ export function HomePage({ profile }: { profile: Profile }) {
               </section>
             </div>
 
-            <section className="dashboard-collection">
+            <section className="dashboard-collection" id="artworks">
               <div className="dashboard-collection-heading">
                 <div>
                   <p className="eyebrow">Collection</p>

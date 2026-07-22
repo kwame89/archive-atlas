@@ -41,6 +41,7 @@ import {
 } from "../lib/profileIntegrations";
 import { TransferForm } from "../components/TransferForm";
 import { ExhibitionForm } from "../components/ExhibitionForm";
+import { ExhibitionEditor } from "../components/ExhibitionEditor";
 import { ConditionReportForm } from "../components/ConditionReportForm";
 import { PushToJgaButton } from "../components/PushToJgaButton";
 import { ConsignmentManager } from "../components/ConsignmentManager";
@@ -851,6 +852,16 @@ export function ArtworkPage() {
                             </p>
                           )}
                           {event.notes && <p className="event-notes">{event.notes}</p>}
+
+                          {event.type === "exhibition" &&
+                            myProfileId &&
+                            (event.actor_id === myProfileId || canManage) && (
+                              <ExhibitionEditor
+                                event={event}
+                                actorProfileId={myProfileId}
+                                onComplete={reloadEvents}
+                              />
+                            )}
 
                           {event.type === "genesis" && canManage && (
                             <div className="event-controls">

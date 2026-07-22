@@ -3136,6 +3136,103 @@
   font-size: 0.76rem;
 }
 
+.exhibition-edit-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.exhibition-editor-panel {
+  max-width: 760px;
+  margin-top: 14px;
+  border: 1px solid var(--border-strong);
+  background: #f4f1e9;
+}
+
+.exhibition-editor-form {
+  margin: 0;
+  padding: 18px;
+  border: 0;
+}
+
+.exhibition-editor-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 8px;
+}
+
+.exhibition-editor-heading h4 {
+  margin: 2px 0 0;
+  font: 400 1.35rem/1.2 Georgia, "Times New Roman", serif;
+}
+
+.timeline .exhibition-editor-heading .icon-button,
+.provenance-list .exhibition-editor-heading .icon-button {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  margin: 0;
+  padding: 0;
+}
+
+.exhibition-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 14px;
+}
+
+.exhibition-editor-grid > div {
+  min-width: 0;
+}
+
+.exhibition-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.timeline .exhibition-editor-actions button,
+.provenance-list .exhibition-editor-actions button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+
+.exhibition-remove-zone {
+  padding: 14px 18px 18px;
+  border-top: 1px solid var(--border);
+  background: #eee9e2;
+}
+
+.timeline .exhibition-remove-trigger,
+.provenance-list .exhibition-remove-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  color: #7f2723;
+  background: transparent;
+  border: 0;
+  font-size: 0.82rem;
+}
+
+.exhibition-remove-confirmation p {
+  margin: 0 0 7px;
+}
+
+.exhibition-remove-confirmation label {
+  margin-top: 12px;
+}
+
 .edit-date-row {
   display: flex;
   align-items: center;
@@ -4313,6 +4410,16 @@ button.danger {
   color: #fff;
   background: #8b312c;
   border-color: #8b312c;
+}
+
+@media (max-width: 600px) {
+  .exhibition-editor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .exhibition-editor-actions button {
+    flex: 1 1 100%;
+  }
 }
 
 .coa-empty,

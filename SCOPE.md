@@ -344,7 +344,8 @@ profile" checkbox in the profile edit form, backed by `updateProfile`'s `isPubli
   insurance, agreement files, and sold/returned outcomes while keeping title transfer explicit.
   Persistent artwork drafts, image-led batch creation, post-creation media management, archival
   valuation, ordered Collections, versioned Certificates of Authenticity, and the profile-limited
-  JGA Studio publishing bridge have also shipped.
+  JGA Studio publishing bridge have also shipped. Exhibition records can now be corrected or
+  withdrawn without silently erasing their revision history.
 - **Current — private-beta stabilization.** 🚧 **In progress.** Visible anchor state and retries,
   monitoring, mobile/cross-browser testing, condition-report clarity, accessibility, backup and
   recovery procedures, legal copy, and invited-tester readiness. These are product-quality gates,

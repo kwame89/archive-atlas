@@ -386,6 +386,15 @@ export interface LogExhibitionInput {
   notes?: string;
 }
 
+export interface UpdateExhibitionInput {
+  title: string;
+  venue?: string;
+  location?: string;
+  startDate: string;
+  endDate?: string;
+  notes?: string;
+}
+
 /**
  * Logs an exhibition event — a showing of an artwork, which does not change
  * ownership or custody. Any signed-in profile can log one (the "self-logged"
@@ -410,6 +419,40 @@ export async function logExhibition(actorId: string, input: LogExhibitionInput):
     .single();
   if (error) throw error;
   anchorEvent(event.id);
+}
+
+/** Corrects an exhibition through the database's audited revision function. */
+export async function updateExhibition(
+  eventId: string,
+  revisedBy: string,
+  input: UpdateExhibitionInput
+): Promise<void> {
+  const { error } = await supabase.rpc("update_exhibition_event", {
+    p_event_id: eventId,
+    p_revised_by: revisedBy,
+    p_title: input.title,
+    p_venue: input.venue ?? "",
+    p_location: input.location ?? "",
+    p_start_date: new Date(input.startDate).toISOString(),
+    p_end_date: input.endDate ? new Date(input.endDate).toISOString() : null,
+    p_notes: input.notes ?? "",
+  });
+  if (error) throw error;
+  anchorEvent(eventId);
+}
+
+/** Withdraws an erroneous exhibition from ordinary public views. */
+export async function withdrawExhibition(
+  eventId: string,
+  revisedBy: string,
+  reason?: string
+): Promise<void> {
+  const { error } = await supabase.rpc("withdraw_exhibition_event", {
+    p_event_id: eventId,
+    p_revised_by: revisedBy,
+    p_reason: reason ?? null,
+  });
+  if (error) throw error;
 }
 
 /** Marks a self-logged exhibition as corroborated by the artwork's artist. */
@@ -682,6 +725,7 @@ export async function getArtworkEvents(artworkId: string): Promise<ArtworkEvent[
     .from("events")
     .select("*")
     .eq("artwork_id", artworkId)
+    .is("voided_at", null)
     .order("occurred_at", { ascending: true });
   if (error) throw error;
   return data ?? [];
@@ -698,7 +742,8 @@ export async function getArtworkEventCount(artworkIds: string[]): Promise<number
   const { count, error } = await supabase
     .from("events")
     .select("id", { count: "exact", head: true })
-    .in("artwork_id", artworkIds);
+    .in("artwork_id", artworkIds)
+    .is("voided_at", null);
   if (error) throw error;
   return count ?? 0;
 }
@@ -714,6 +759,7 @@ export async function getRecentArtworkEvents(
     .from("events")
     .select("*, artworks(title)")
     .in("artwork_id", artworkIds)
+    .is("voided_at", null)
     .order("occurred_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
@@ -738,6 +784,7 @@ export async function getExhibitionsLoggedBy(actorId: string): Promise<LoggedExh
     .select("*, artworks(title)")
     .eq("type", "exhibition")
     .eq("actor_id", actorId)
+    .is("voided_at", null)
     .order("occurred_at", { ascending: false });
   if (error) throw error;
 

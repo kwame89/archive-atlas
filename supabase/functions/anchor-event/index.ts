@@ -89,6 +89,11 @@ function canonicalEventJson(event: Record<string, unknown>): string {
     price: event.price,
     currency: event.currency,
     notes: event.notes,
+    exhibition_title: event.exhibition_title,
+    exhibition_venue: event.exhibition_venue,
+    exhibition_location: event.exhibition_location,
+    exhibition_end_date: event.exhibition_end_date,
+    condition_rating: event.condition_rating,
   });
 }
 
@@ -122,7 +127,27 @@ Deno.serve(async (req) => {
       "auth_controls_profile",
       { p_profile_id: event.actor_id }
     );
-    if (authError || !controlsActor) {
+    if (authError) {
+      return jsonResponse({ error: "Could not verify event authority" }, 500);
+    }
+
+    let canAnchor = Boolean(controlsActor);
+    if (!canAnchor && event.type === "exhibition" && event.artwork_id) {
+      const { data: artwork } = await supabase
+        .from("artworks")
+        .select("root_artist_id")
+        .eq("id", event.artwork_id)
+        .single();
+      if (artwork?.root_artist_id) {
+        const { data: controlsRootArtist } = await supabaseAsCaller.rpc(
+          "auth_controls_or_created_unclaimed",
+          { p_profile_id: artwork.root_artist_id }
+        );
+        canAnchor = Boolean(controlsRootArtist);
+      }
+    }
+
+    if (!canAnchor) {
       return jsonResponse({ error: "Not authorized to anchor this event" }, 403);
     }
 

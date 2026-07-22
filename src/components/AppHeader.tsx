@@ -1,5 +1,6 @@
 import {
   CalendarRange,
+  Images,
   Layers,
   LogOut,
   Plus,
@@ -54,6 +55,13 @@ export function AppHeader({
       </Link>
       {profile ? (
         <nav aria-label="Primary navigation">
+          <Link
+            to="/#artworks"
+            className={`nav-link${location.pathname === "/" && location.hash === "#artworks" ? " active" : ""}`}
+          >
+            <Images size={16} strokeWidth={1.8} aria-hidden="true" />
+            Artworks
+          </Link>
           <Link to={`/profiles/${profile.id}`} className={navClass(`/profiles/${profile.id}`)}>
             <UserRound size={16} strokeWidth={1.8} aria-hidden="true" />
             Profile

@@ -227,6 +227,8 @@ Status labels in this section mean:
 - **Shipped:** Ownership and custody caches update from their respective event workflows without
   conflating the two states.
 - **Shipped:** Exhibition claims can be self-logged and later corroborated by the artist.
+- **Shipped:** Authorized recorders and root-artist controllers can correct exhibitions or
+  withdraw erroneous test records while retaining a private revision trail.
 - **Shipped:** Authorized owners, custodians, and root-artist controllers can log dated condition
   reports with a rating and notes.
 - **Beta refinement:** The artwork's current `condition` field must be clearly distinguished from

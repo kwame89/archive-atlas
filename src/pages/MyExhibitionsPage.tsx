@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { getExhibitionsLoggedBy, getProfileNames, type LoggedExhibition } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
 import { AppHeader } from "../components/AppHeader";
+import { ExhibitionEditor } from "../components/ExhibitionEditor";
 import type { Profile } from "../types/database";
 
 export function MyExhibitionsPage({ profile }: { profile: Profile }) {
@@ -10,6 +11,7 @@ export function MyExhibitionsPage({ profile }: { profile: Profile }) {
   const [names, setNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     setLoading(true);
@@ -24,7 +26,7 @@ export function MyExhibitionsPage({ profile }: { profile: Profile }) {
       })
       .catch((err) => setError(getErrorMessage(err)))
       .finally(() => setLoading(false));
-  }, [profile.id]);
+  }, [profile.id, reloadKey]);
 
   return (
     <div className="page-wide">
@@ -68,6 +70,11 @@ export function MyExhibitionsPage({ profile }: { profile: Profile }) {
                 "Self-logged — not yet corroborated"
               )}
             </p>
+            <ExhibitionEditor
+              event={event}
+              actorProfileId={profile.id}
+              onComplete={() => setReloadKey((current) => current + 1)}
+            />
           </li>
         ))}
       </ul>
