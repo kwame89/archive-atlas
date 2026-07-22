@@ -48,7 +48,7 @@ export function AppHeader({
         <span className="brand-copy">
           <span className="brand-name-row">
             <span className="brand-name">Archive Atlas</span>
-            <span className="beta-environment-badge">Private beta · Testnet</span>
+            <span className="beta-environment-badge">Private beta</span>
           </span>
           <span className="brand-tagline">Preserve. Prove. Perpetuate.</span>
         </span>
