@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   Trash2,
 } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../lib/authContext";
 import { getMyProfile, canActFor, getWalletInfo } from "../lib/profiles";
 import { signAndAnchorEvent, explorerBaseForNetwork } from "../lib/stellarWallet";
@@ -52,6 +52,11 @@ import { ProfileSearchAdd } from "../components/ProfileSearchAdd";
 import { AppHeader } from "../components/AppHeader";
 import type { Artwork, ArtworkEvent, ArtworkImage, Profile } from "../types/database";
 import { formatEditionLabel } from "../lib/classification";
+import {
+  artworkPath,
+  profilePathFromParts,
+  recordIdFromRoute,
+} from "../lib/recordRoutes";
 
 const EVENT_LABELS: Record<ArtworkEvent["type"], string> = {
   genesis: "Created",
@@ -115,7 +120,10 @@ function getProofStatus(event: ArtworkEvent): {
 }
 
 export function ArtworkPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id: artworkRef } = useParams<{ id: string }>();
+  const id = recordIdFromRoute(artworkRef);
+  const location = useLocation();
+  const navigate = useNavigate();
   const { session } = useAuth();
   const [artwork, setArtwork] = useState<Artwork | null>(null);
   const [images, setImages] = useState<ArtworkImage[]>([]);
@@ -255,6 +263,14 @@ export function ArtworkPage() {
       .catch((err) => setError(getErrorMessage(err)))
       .finally(() => setLoading(false));
   }, [loadAll]);
+
+  useEffect(() => {
+    if (!artwork) return;
+    const canonicalPath = artworkPath(artwork);
+    if (location.pathname !== canonicalPath) {
+      navigate(canonicalPath, { replace: true });
+    }
+  }, [artwork, location.pathname, navigate]);
 
   async function handleSetPrimary(imageId: string) {
     if (!id) return;
@@ -509,17 +525,17 @@ export function ArtworkPage() {
           <div className="record-toolbar-actions">
             {canManage && (
               <>
-                <Link to={`/artworks/${artwork.id}/edit`} className="record-edit-link">
+                <Link to={artworkPath(artwork, "edit")} className="record-edit-link">
                   <Pencil size={16} aria-hidden="true" />
                   Edit details
                 </Link>
-                <Link to={`/artworks/${artwork.id}/certificate`} className="record-certificate-link">
+                <Link to={artworkPath(artwork, "certificate")} className="record-certificate-link">
                   <ShieldCheck size={16} aria-hidden="true" />
                   Certificate of authenticity
                 </Link>
               </>
             )}
-            <Link to={`/artworks/${artwork.id}/print`} className="record-print-link">
+            <Link to={artworkPath(artwork, "print")} className="record-print-link">
               <Printer size={16} aria-hidden="true" />
               Print record
             </Link>
@@ -663,13 +679,20 @@ export function ArtworkPage() {
             <h1>{artwork.title}</h1>
             <p className="record-byline">
               By{" "}
-              <Link to={`/profiles/${artwork.root_artist_id}`}>
+              <Link
+                to={profilePathFromParts(
+                  artwork.root_artist_id,
+                  names[artwork.root_artist_id] ?? "Unknown artist"
+                )}
+              >
                 {names[artwork.root_artist_id] ?? "Unknown artist"}
               </Link>
               {collaborators.map((collaborator) => (
                 <span key={collaborator.id}>
                   , with{" "}
-                  <Link to={`/profiles/${collaborator.id}`}>{collaborator.display_name}</Link>
+                  <Link to={profilePathFromParts(collaborator.id, collaborator.display_name)}>
+                    {collaborator.display_name}
+                  </Link>
                 </span>
               ))}
             </p>
@@ -710,7 +733,12 @@ export function ArtworkPage() {
                 <span>Current owner</span>
                 <strong>
                   {artwork.current_owner_id ? (
-                    <Link to={`/profiles/${artwork.current_owner_id}`}>
+                    <Link
+                      to={profilePathFromParts(
+                        artwork.current_owner_id,
+                        names[artwork.current_owner_id] ?? "Unknown"
+                      )}
+                    >
                       {names[artwork.current_owner_id] ?? "Unknown"}
                     </Link>
                   ) : (
@@ -722,7 +750,12 @@ export function ArtworkPage() {
                 <span>Current custodian</span>
                 <strong>
                   {artwork.current_custodian_id ? (
-                    <Link to={`/profiles/${artwork.current_custodian_id}`}>
+                    <Link
+                      to={profilePathFromParts(
+                        artwork.current_custodian_id,
+                        names[artwork.current_custodian_id] ?? "Unknown"
+                      )}
+                    >
                       {names[artwork.current_custodian_id] ?? "Unknown"}
                     </Link>
                   ) : (
@@ -1033,7 +1066,7 @@ export function ArtworkPage() {
               <div className="record-management-header-actions">
                 <p>These controls are shown according to your relationship to the artwork.</p>
                 {canManage && (
-                  <Link to={`/artworks/${artwork.id}/edit`} className="button-link">
+                  <Link to={artworkPath(artwork, "edit")} className="button-link">
                     <Pencil size={16} aria-hidden="true" />
                     Edit artwork details
                   </Link>

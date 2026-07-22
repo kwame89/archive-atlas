@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { createArtwork, saveArtworkPrivateNotes, uploadArtworkImages } from "../lib/artworks";
 import { getProfile } from "../lib/profiles";
 import { getErrorMessage } from "../lib/errors";
+import { artworkPath } from "../lib/recordRoutes";
 import { useLocalDraft } from "../lib/useLocalDraft";
 import { ArtworkImageUploader } from "../components/ArtworkImageUploader";
 import { ProfileSearchAdd } from "../components/ProfileSearchAdd";
@@ -201,12 +202,12 @@ export function CreateArtworkPage({ profile }: { profile: Profile }) {
         } catch (uploadErr) {
           clearDraft();
           setError(`Artwork created, but images failed to upload: ${getErrorMessage(uploadErr)}`);
-          navigate(`/artworks/${artwork.id}`);
+          navigate(artworkPath(artwork));
           return;
         }
       }
       clearDraft();
-      navigate(`/artworks/${artwork.id}`);
+      navigate(artworkPath(artwork));
     } catch (err) {
       setError(getErrorMessage(err));
       setSubmitting(false);

@@ -6,7 +6,7 @@ import {
   Unplug,
   Wallet,
 } from "lucide-react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../lib/authContext";
 import {
   canActFor,
@@ -23,6 +23,7 @@ import {
   STELLAR_EXPERT_BASE,
 } from "../lib/stellarWallet";
 import { getErrorMessage } from "../lib/errors";
+import { artworkPath, profilePath, recordIdFromRoute } from "../lib/recordRoutes";
 import { AppHeader } from "../components/AppHeader";
 import type { Artwork, Profile } from "../types/database";
 
@@ -34,7 +35,9 @@ const TIER_LABELS: Record<Profile["trust_tier"], string> = {
 };
 
 export function ProfilePage() {
-  const { id } = useParams<{ id: string }>();
+  const { id: profileRef } = useParams<{ id: string }>();
+  const id = recordIdFromRoute(profileRef);
+  const location = useLocation();
   const navigate = useNavigate();
   const { session } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -87,6 +90,14 @@ export function ProfilePage() {
       .catch((err) => setError(getErrorMessage(err)))
       .finally(() => setLoading(false));
   }, [id, session]);
+
+  useEffect(() => {
+    if (!profile) return;
+    const canonicalPath = profilePath(profile);
+    if (location.pathname !== canonicalPath) {
+      navigate(canonicalPath, { replace: true });
+    }
+  }, [location.pathname, navigate, profile]);
 
   function startEditing() {
     if (!profile) return;
@@ -456,7 +467,7 @@ export function ProfilePage() {
                   {caption}
                 </button>
               ) : (
-                <Link to={`/artworks/${artwork.id}`}>
+                <Link to={artworkPath(artwork)}>
                   {thumb}
                   {caption}
                 </Link>

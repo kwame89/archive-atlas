@@ -5,6 +5,7 @@ import { AppHeader } from "../components/AppHeader";
 import { ArtworkImageUploader } from "../components/ArtworkImageUploader";
 import { createArtwork, uploadArtworkImages } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
+import { artworkPathFromParts } from "../lib/recordRoutes";
 import type { Profile } from "../types/database";
 
 const MAX_BATCH_ARTWORKS = 25;
@@ -306,7 +307,10 @@ export function BatchArtworkPage({ profile }: { profile: Profile }) {
                       The following records were created, but their images need to be added again:
                     </p>
                     {result.createdWithoutImages.map((warning) => (
-                      <Link key={warning.artworkId} to={`/artworks/${warning.artworkId}`}>
+                      <Link
+                        key={warning.artworkId}
+                        to={artworkPathFromParts(warning.artworkId, warning.title)}
+                      >
                         {warning.title}
                         <span className="visually-hidden">: {warning.message}</span>
                       </Link>

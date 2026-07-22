@@ -5,6 +5,7 @@ import { AppHeader } from "../components/AppHeader";
 import { CertificateDocument } from "../components/CertificateDocument";
 import { getCertificateByVerificationCode } from "../lib/certificates";
 import { getErrorMessage } from "../lib/errors";
+import { artworkPathFromParts } from "../lib/recordRoutes";
 import type { AuthenticityCertificate } from "../types/database";
 
 export function CertificateVerificationPage() {
@@ -47,7 +48,13 @@ export function CertificateVerificationPage() {
       </div>
       <main>
         <div className="coa-toolbar no-print">
-          <Link to={`/artworks/${certificate.artwork_id}`} className="record-back-link">
+          <Link
+            to={artworkPathFromParts(
+              certificate.artwork_id,
+              certificate.artwork_snapshot.title
+            )}
+            className="record-back-link"
+          >
             <ArrowLeft size={16} />
             View artwork record
           </Link>

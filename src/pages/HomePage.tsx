@@ -21,6 +21,7 @@ import {
   type RecentArtworkEvent,
 } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
+import { artworkPath, artworkPathFromParts, profilePath } from "../lib/recordRoutes";
 import { AppHeader } from "../components/AppHeader";
 import type { Artwork, ArtworkEvent, Profile } from "../types/database";
 
@@ -220,7 +221,7 @@ export function HomePage({ profile }: { profile: Profile }) {
                 <span><strong>Collections</strong><small>Organize bodies of work</small></span>
                 <ArrowRight size={16} aria-hidden="true" />
               </Link>
-              <Link to={`/profiles/${profile.id}`}>
+              <Link to={profilePath(profile)}>
                 <UserRound size={18} aria-hidden="true" />
                 <span><strong>Artist profile</strong><small>Edit public details</small></span>
                 <ArrowRight size={16} aria-hidden="true" />
@@ -272,7 +273,7 @@ export function HomePage({ profile }: { profile: Profile }) {
                   <ul className="attention-list">
                     {attentionRecords.slice(0, 5).map(({ artwork, missing }) => (
                       <li key={artwork.id}>
-                        <Link to={`/artworks/${artwork.id}/edit`}>
+                        <Link to={artworkPath(artwork, "edit")}>
                           <span className="attention-icon" aria-hidden="true">
                             <CircleAlert size={18} />
                           </span>
@@ -307,7 +308,9 @@ export function HomePage({ profile }: { profile: Profile }) {
                         <div>
                           <strong>{EVENT_LABELS[event.type]}</strong>
                           {event.artwork_id ? (
-                            <Link to={`/artworks/${event.artwork_id}`}>{artworkTitle}</Link>
+                            <Link to={artworkPathFromParts(event.artwork_id, artworkTitle)}>
+                              {artworkTitle}
+                            </Link>
                           ) : (
                             <span>{artworkTitle}</span>
                           )}
@@ -370,7 +373,7 @@ export function HomePage({ profile }: { profile: Profile }) {
                     const date = artwork.date_display_override ?? (artwork.year ? `${artwork.is_circa ? "circa " : ""}${artwork.year}` : "Date not recorded");
                     return (
                       <li key={artwork.id}>
-                        <Link to={`/artworks/${artwork.id}`}>
+                        <Link to={artworkPath(artwork)}>
                           <div className="dashboard-artwork-image">
                             {thumbnails[artwork.id] ? (
                               <img src={thumbnails[artwork.id]} alt={artwork.title} />

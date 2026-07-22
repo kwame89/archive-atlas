@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getExhibitionsLoggedBy, getProfileNames, type LoggedExhibition } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
+import { artworkPathFromParts } from "../lib/recordRoutes";
 import { AppHeader } from "../components/AppHeader";
 import { ExhibitionEditor } from "../components/ExhibitionEditor";
 import type { Profile } from "../types/database";
@@ -48,7 +49,7 @@ export function MyExhibitionsPage({ profile }: { profile: Profile }) {
             <span className="muted"> — {new Date(event.occurred_at).toLocaleDateString()}</span>
             <p className="muted">
               {event.artwork_id ? (
-                <Link to={`/artworks/${event.artwork_id}`}>{artworkTitle}</Link>
+                <Link to={artworkPathFromParts(event.artwork_id, artworkTitle)}>{artworkTitle}</Link>
               ) : (
                 artworkTitle
               )}

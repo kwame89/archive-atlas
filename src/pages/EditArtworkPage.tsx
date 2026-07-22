@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, Save } from "lucide-react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { AppHeader } from "../components/AppHeader";
 import { getArtwork, updateArtworkDetails } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
+import { artworkPath, recordIdFromRoute } from "../lib/recordRoutes";
 import { canActFor } from "../lib/profiles";
 import type { Artwork, Profile } from "../types/database";
 import {
@@ -75,7 +76,9 @@ function textOrNull(value: string): string | null {
 }
 
 export function EditArtworkPage({ profile }: { profile: Profile }) {
-  const { id } = useParams<{ id: string }>();
+  const { id: artworkRef } = useParams<{ id: string }>();
+  const id = recordIdFromRoute(artworkRef);
+  const location = useLocation();
   const navigate = useNavigate();
   const [artwork, setArtwork] = useState<Artwork | null>(null);
   const [form, setForm] = useState<ArtworkEditForm | null>(null);
@@ -121,6 +124,14 @@ export function EditArtworkPage({ profile }: { profile: Profile }) {
       cancelled = true;
     };
   }, [id, profile.id]);
+
+  useEffect(() => {
+    if (!artwork) return;
+    const canonicalPath = artworkPath(artwork, "edit");
+    if (location.pathname !== canonicalPath) {
+      navigate(canonicalPath, { replace: true });
+    }
+  }, [artwork, location.pathname, navigate]);
 
   function updateField<K extends keyof ArtworkEditForm>(key: K, value: ArtworkEditForm[K]) {
     setForm((current) => (current ? { ...current, [key]: value } : current));
@@ -187,7 +198,7 @@ export function EditArtworkPage({ profile }: { profile: Profile }) {
         artworkValue,
         valueCurrency: form.valueCurrency,
       });
-      navigate(`/artworks/${id}`);
+      navigate(artworkPath({ id, title: form.title }));
     } catch (err) {
       setError(getErrorMessage(err));
       setSaving(false);
@@ -199,8 +210,8 @@ export function EditArtworkPage({ profile }: { profile: Profile }) {
       <AppHeader profile={profile} />
 
       <main className="artwork-edit-page">
-        {id && (
-          <Link to={`/artworks/${id}`} className="record-back-link">
+        {artwork && (
+          <Link to={artworkPath(artwork)} className="record-back-link">
             <ArrowLeft size={16} aria-hidden="true" />
             Back to artwork
           </Link>
@@ -376,7 +387,14 @@ export function EditArtworkPage({ profile }: { profile: Profile }) {
                   <Save size={16} aria-hidden="true" />
                   {saving ? "Saving…" : "Save changes"}
                 </button>
-                <button type="button" className="secondary" onClick={() => navigate(`/artworks/${id}`)} disabled={saving}>Cancel</button>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => navigate(artworkPath(artwork))}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
                 {error && <p className="error">{error}</p>}
               </div>
             </form>

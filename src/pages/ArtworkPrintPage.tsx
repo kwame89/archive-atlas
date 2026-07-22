@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { getArtwork, getArtworkImages, getProfileNames } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
+import { artworkPath, recordIdFromRoute } from "../lib/recordRoutes";
 import type { Artwork, ArtworkImage } from "../types/database";
 
 export function ArtworkPrintPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id: artworkRef } = useParams<{ id: string }>();
+  const id = recordIdFromRoute(artworkRef);
+  const location = useLocation();
+  const navigate = useNavigate();
   const [artwork, setArtwork] = useState<Artwork | null>(null);
   const [images, setImages] = useState<ArtworkImage[]>([]);
   const [artistName, setArtistName] = useState("");
@@ -29,6 +33,14 @@ export function ArtworkPrintPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  useEffect(() => {
+    if (!artwork) return;
+    const canonicalPath = artworkPath(artwork, "print");
+    if (location.pathname !== canonicalPath) {
+      navigate(canonicalPath, { replace: true });
+    }
+  }, [artwork, location.pathname, navigate]);
+
   if (loading) return <p className="muted">Loading…</p>;
   if (error) return <p className="error">{error}</p>;
   if (!artwork) return <p className="muted">No artwork with this id.</p>;
@@ -49,7 +61,7 @@ export function ArtworkPrintPage() {
   return (
     <div className="print-page">
       <p className="no-print">
-        <Link to={`/artworks/${artwork.id}`}>← Back to artwork</Link>
+        <Link to={artworkPath(artwork)}>← Back to artwork</Link>
       </p>
       <button type="button" className="no-print print-button" onClick={() => window.print()}>
         Print

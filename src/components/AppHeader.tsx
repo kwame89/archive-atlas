@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import archiveAtlasMark from "../assets/archive-atlas-mark.png";
+import { profilePath } from "../lib/recordRoutes";
 import { supabase } from "../lib/supabaseClient";
 import type { Profile } from "../types/database";
 
@@ -62,7 +63,7 @@ export function AppHeader({
             <Images size={16} strokeWidth={1.8} aria-hidden="true" />
             Artworks
           </Link>
-          <Link to={`/profiles/${profile.id}`} className={navClass(`/profiles/${profile.id}`)}>
+          <Link to={profilePath(profile)} className={navClass(profilePath(profile))}>
             <UserRound size={16} strokeWidth={1.8} aria-hidden="true" />
             Profile
           </Link>

@@ -9,7 +9,7 @@ import {
   ShieldCheck,
   ShieldX,
 } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { AppHeader } from "../components/AppHeader";
 import { CertificateDocument } from "../components/CertificateDocument";
 import {
@@ -18,6 +18,7 @@ import {
   revokeAuthenticityCertificate,
 } from "../lib/certificates";
 import { getErrorMessage } from "../lib/errors";
+import { artworkPath, recordIdFromRoute } from "../lib/recordRoutes";
 import { getArtwork, getArtworkImages } from "../lib/artworks";
 import { canActFor } from "../lib/profiles";
 import type { Artwork, AuthenticityCertificate, Profile } from "../types/database";
@@ -31,7 +32,10 @@ function formatDate(value: string): string {
 }
 
 export function CertificatePage({ profile }: { profile: Profile }) {
-  const { id } = useParams<{ id: string }>();
+  const { id: artworkRef } = useParams<{ id: string }>();
+  const id = recordIdFromRoute(artworkRef);
+  const location = useLocation();
+  const navigate = useNavigate();
   const [artwork, setArtwork] = useState<Artwork | null>(null);
   const [certificates, setCertificates] = useState<AuthenticityCertificate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -76,6 +80,14 @@ export function CertificatePage({ profile }: { profile: Profile }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!artwork) return;
+    const canonicalPath = artworkPath(artwork, "certificate");
+    if (location.pathname !== canonicalPath) {
+      navigate(canonicalPath, { replace: true });
+    }
+  }, [artwork, location.pathname, navigate]);
 
   const selectedCertificate = useMemo(
     () => certificates.find((certificate) => certificate.id === selectedId) ?? certificates[0] ?? null,
@@ -156,7 +168,7 @@ export function CertificatePage({ profile }: { profile: Profile }) {
 
       <main>
         <div className="coa-toolbar no-print">
-          <Link to={`/artworks/${artwork.id}`} className="record-back-link">
+          <Link to={artworkPath(artwork)} className="record-back-link">
             <ArrowLeft size={16} aria-hidden="true" />
             Back to artwork
           </Link>
