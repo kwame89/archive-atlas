@@ -170,7 +170,16 @@ export interface CanonicalEventFields {
   occurred_at: string;
   price: number | null;
   currency: string | null;
+  sale_channel: string | null;
+  seller_type: string | null;
+  buyer_identity_public: boolean;
+  buyer_display_name_public: string | null;
   notes: string | null;
+  exhibition_title: string | null;
+  exhibition_venue: string | null;
+  exhibition_location: string | null;
+  exhibition_end_date: string | null;
+  condition_rating: string | null;
 }
 
 async function sha256Hex(text: string): Promise<string> {
@@ -196,7 +205,16 @@ function canonicalEventJson(event: CanonicalEventFields): string {
     occurred_at: event.occurred_at,
     price: event.price,
     currency: event.currency,
+    sale_channel: event.sale_channel,
+    seller_type: event.seller_type,
+    buyer_identity_public: event.buyer_identity_public,
+    buyer_display_name_public: event.buyer_display_name_public,
     notes: event.notes,
+    exhibition_title: event.exhibition_title,
+    exhibition_venue: event.exhibition_venue,
+    exhibition_location: event.exhibition_location,
+    exhibition_end_date: event.exhibition_end_date,
+    condition_rating: event.condition_rating,
   });
 }
 

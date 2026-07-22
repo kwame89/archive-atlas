@@ -563,6 +563,43 @@ export async function uploadArtworkImages(
   return uploaded;
 }
 
+/** Adds owner-supplied installation views without granting access to artwork
+ * metadata, primary-image controls, or the artist's original media. */
+export async function uploadOwnerInstallationImages(
+  artworkId: string,
+  files: File[]
+): Promise<ArtworkImage[]> {
+  const uploaded: ArtworkImage[] = [];
+  for (const file of files) {
+    const path = `${artworkId}/${crypto.randomUUID()}-${file.name}`;
+    const bucket = supabase.storage.from("artwork-images");
+    const { error: uploadError } = await bucket.upload(path, file);
+    if (uploadError) throw uploadError;
+
+    const {
+      data: { publicUrl },
+    } = bucket.getPublicUrl(path);
+
+    const { data: row, error: insertError } = await supabase
+      .from("artwork_images")
+      .insert({
+        artwork_id: artworkId,
+        url: publicUrl,
+        is_primary: false,
+        image_kind: "installation",
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      await bucket.remove([path]).catch(() => undefined);
+      throw insertError;
+    }
+    uploaded.push(row);
+  }
+  return uploaded;
+}
+
 function getArtworkImageStoragePath(url: string): string | null {
   const marker = "/storage/v1/object/public/artwork-images/";
   const markerIndex = url.indexOf(marker);

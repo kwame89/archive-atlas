@@ -33,6 +33,7 @@ import {
   updateGenesisDate,
   updateRoyaltyPercentage,
   uploadArtworkImages,
+  uploadOwnerInstallationImages,
 } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
 import {
@@ -45,6 +46,8 @@ import { ExhibitionEditor } from "../components/ExhibitionEditor";
 import { ConditionReportForm } from "../components/ConditionReportForm";
 import { PushToJgaButton } from "../components/PushToJgaButton";
 import { ConsignmentManager } from "../components/ConsignmentManager";
+import { SaleManager } from "../components/SaleManager";
+import { ArtworkImageUploader } from "../components/ArtworkImageUploader";
 import { ProfileSearchAdd } from "../components/ProfileSearchAdd";
 import { AppHeader } from "../components/AppHeader";
 import type { Artwork, ArtworkEvent, ArtworkImage, Profile } from "../types/database";
@@ -130,6 +133,8 @@ export function ArtworkPage() {
   const [error, setError] = useState("");
   const [imageActionError, setImageActionError] = useState("");
   const [addingImages, setAddingImages] = useState(false);
+  const [ownerImageFiles, setOwnerImageFiles] = useState<File[]>([]);
+  const [uploadingOwnerImages, setUploadingOwnerImages] = useState(false);
   const [replacingImageId, setReplacingImageId] = useState<string | null>(null);
   const [removingImageId, setRemovingImageId] = useState<string | null>(null);
   const [settingPrimaryImageId, setSettingPrimaryImageId] = useState<string | null>(null);
@@ -276,6 +281,21 @@ export function ArtworkPage() {
       setImageActionError(getErrorMessage(err));
     } finally {
       setAddingImages(false);
+    }
+  }
+
+  async function handleAddOwnerInstallationImages() {
+    if (!id || ownerImageFiles.length === 0) return;
+    setUploadingOwnerImages(true);
+    setImageActionError("");
+    try {
+      await uploadOwnerInstallationImages(id, ownerImageFiles);
+      setOwnerImageFiles([]);
+      await reloadImages();
+    } catch (err) {
+      setImageActionError(getErrorMessage(err));
+    } finally {
+      setUploadingOwnerImages(false);
     }
   }
 
@@ -510,7 +530,12 @@ export function ArtworkPage() {
           <div className="artwork-media-column">
             <div className="artwork-media-stage">
               {activeImage ? (
-                <img src={activeImage.url} alt={artwork.title} className="artwork-record-image" />
+                <>
+                  <img src={activeImage.url} alt={artwork.title} className="artwork-record-image" />
+                  {activeImage.image_kind === "installation" && (
+                    <span className="installation-image-label">Collector installation view</span>
+                  )}
+                </>
               ) : (
                 <div className="artwork-record-image-placeholder">
                   <FileText size={30} strokeWidth={1.4} aria-hidden="true" />
@@ -535,6 +560,7 @@ export function ArtworkPage() {
                   >
                     <img src={image.url} alt="" />
                     {image.is_primary && <span>Primary</span>}
+                    {!image.is_primary && image.image_kind === "installation" && <span>Installed</span>}
                   </button>
                 ))}
               </div>
@@ -801,14 +827,26 @@ export function ArtworkPage() {
                             <p>Owner and custodian: {names[event.to_party_id] ?? "Unknown"}</p>
                           )}
                           {event.type === "ownership_transfer" && (
-                            <p>
-                              {names[event.from_party_id ?? ""] ?? "Unknown"} to{" "}
-                              {names[event.to_party_id ?? ""] ?? "Unknown"}
-                              {event.price != null &&
-                                ` · ${event.currency ?? "USD"} ${event.price.toLocaleString()}`}
-                              {event.actor_id !== event.from_party_id &&
-                                ` · represented by ${names[event.actor_id] ?? "Unknown"}`}
-                            </p>
+                            <>
+                              <p>
+                                {names[event.from_party_id ?? ""] ?? "Private seller"} to{" "}
+                                {event.buyer_identity_public
+                                  ? event.buyer_display_name_public ?? names[event.to_party_id ?? ""] ?? "Buyer"
+                                  : event.sale_channel
+                                    ? "Private collector"
+                                    : names[event.to_party_id ?? ""] ?? "Unknown"}
+                                {event.price != null &&
+                                  ` · ${event.currency ?? "USD"} ${event.price.toLocaleString()}`}
+                                {event.actor_id !== event.from_party_id &&
+                                  ` · represented by ${names[event.actor_id] ?? event.seller_type ?? "Unknown"}`}
+                              </p>
+                              {event.sale_channel && (
+                                <p className="muted sale-provenance-meta">
+                                  {event.sale_channel === "private" ? "Private sale" : `${event.sale_channel[0].toUpperCase()}${event.sale_channel.slice(1)} sale`}
+                                  {event.seller_type && ` · Seller type: ${event.seller_type}`}
+                                </p>
+                              )}
+                            </>
                           )}
                           {event.type === "custody_change" && (
                             <p>
@@ -1026,6 +1064,46 @@ export function ArtworkPage() {
                     canEdit={controlsOwner || controlsCustodian}
                     onComplete={loadAll}
                   />
+                </section>
+              )}
+
+              {(controlsOwner || controlsCustodian) && myProfileId && (
+                <section className="management-panel management-panel-wide">
+                  <SaleManager
+                    artwork={artwork}
+                    actorProfileId={myProfileId}
+                    controlsOwner={controlsOwner}
+                    controlsCustodian={controlsCustodian}
+                    onComplete={loadAll}
+                  />
+                </section>
+              )}
+
+              {controlsOwner && !canManage && (
+                <section className="management-panel management-panel-wide owner-media-panel">
+                  <h3>Installation photos</h3>
+                  <p className="muted">
+                    Add views of the artwork displayed in your home or collection. These photos join the public media gallery without changing the artwork record or its primary image.
+                  </p>
+                  <ArtworkImageUploader
+                    files={ownerImageFiles}
+                    primaryIndex={0}
+                    onFilesChange={setOwnerImageFiles}
+                    onPrimaryIndexChange={() => undefined}
+                    showPrimaryChoice={false}
+                    maxFiles={12}
+                    label="Installation images"
+                    emptyTitle="Add installation photos"
+                    filledTitle="Add more installation photos"
+                  />
+                  <button
+                    type="button"
+                    disabled={uploadingOwnerImages || ownerImageFiles.length === 0}
+                    onClick={handleAddOwnerInstallationImages}
+                  >
+                    <ImagePlus size={16} aria-hidden="true" />
+                    {uploadingOwnerImages ? "Uploading…" : "Add to artwork media"}
+                  </button>
                 </section>
               )}
 

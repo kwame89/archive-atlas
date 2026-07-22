@@ -18,6 +18,7 @@ interface ArtworkImageUploaderProps {
   showPrimaryChoice?: boolean;
   emptyTitle?: string;
   filledTitle?: string;
+  label?: string;
 }
 
 interface Preview {
@@ -38,6 +39,7 @@ export function ArtworkImageUploader({
   showPrimaryChoice = true,
   emptyTitle = "Add artwork images",
   filledTitle = "Add more images",
+  label = "Images",
 }: ArtworkImageUploaderProps) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -113,7 +115,7 @@ export function ArtworkImageUploader({
   return (
     <div className="artwork-image-uploader">
       <label id={`${inputId}-label`} htmlFor={inputId}>
-        Images
+        {label}
       </label>
       <input
         ref={inputRef}

@@ -6,6 +6,10 @@ export type ConsignmentStatus = "active" | "sold" | "returned";
 
 export type InsuranceResponsibility = "not_recorded" | "consignor" | "consignee" | "other";
 
+export type SaleChannel = "private" | "exhibition" | "gallery" | "auction" | "other";
+
+export type DeliveryStatus = "awaiting_delivery" | "delivered";
+
 export type EventType =
   | "genesis"
   | "ownership_transfer"
@@ -88,6 +92,8 @@ export interface ArtworkImage {
   artwork_id: string;
   url: string;
   is_primary: boolean;
+  image_kind: "record" | "installation";
+  caption: string | null;
   created_at: string;
 }
 
@@ -179,6 +185,31 @@ export interface Consignment {
   updated_at: string;
 }
 
+export interface ArtworkSale {
+  id: string;
+  artwork_id: string;
+  ownership_event_id: string;
+  transaction_group_id: string;
+  seller_id: string;
+  buyer_id: string;
+  actor_id: string;
+  consignment_id: string | null;
+  sale_channel: SaleChannel;
+  seller_type: ProfileType;
+  sale_price: number | null;
+  currency: string;
+  share_sale_price: boolean;
+  share_buyer_identity: boolean;
+  sale_date: string;
+  private_notes: string | null;
+  delivery_status: DeliveryStatus;
+  delivered_at: string | null;
+  delivery_confirmed_by: string | null;
+  delivery_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ArtworkEvent {
   id: string;
   type: EventType;
@@ -196,6 +227,10 @@ export interface ArtworkEvent {
   anchor_network: string | null;
   price: number | null;
   currency: string | null;
+  sale_channel: SaleChannel | null;
+  seller_type: ProfileType | null;
+  buyer_identity_public: boolean;
+  buyer_display_name_public: string | null;
   notes: string | null;
   exhibition_title: string | null;
   exhibition_venue: string | null;

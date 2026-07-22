@@ -27,6 +27,7 @@ import type {
   ConsignmentStatus,
   InsuranceResponsibility,
   Profile,
+  SaleChannel,
 } from "../types/database";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "JMD"];
@@ -292,6 +293,10 @@ export function ConsignmentManager({
   const [outcomeMode, setOutcomeMode] = useState<"sold" | "returned" | null>(null);
   const [outcomeDate, setOutcomeDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [salePrice, setSalePrice] = useState("");
+  const [buyer, setBuyer] = useState<Profile | null>(null);
+  const [saleChannel, setSaleChannel] = useState<Exclude<SaleChannel, "private">>("gallery");
+  const [shareBuyerIdentity, setShareBuyerIdentity] = useState(false);
+  const [shareSalePrice, setShareSalePrice] = useState(false);
   const [outcomeNotes, setOutcomeNotes] = useState("");
   const [savingOutcome, setSavingOutcome] = useState(false);
   const [openingAgreementId, setOpeningAgreementId] = useState<string | null>(null);
@@ -344,6 +349,10 @@ export function ConsignmentManager({
 
   async function handleOutcome(consignment: Consignment) {
     if (!outcomeMode) return;
+    if (outcomeMode === "sold" && !buyer) {
+      setError("Select the buyer before completing the sale.");
+      return;
+    }
     setSavingOutcome(true);
     setError("");
     try {
@@ -352,9 +361,16 @@ export function ConsignmentManager({
         outcomeDate,
         salePrice: outcomeMode === "sold" ? optionalNumber(salePrice) : null,
         outcomeNotes: optionalText(outcomeNotes),
+        buyerId: outcomeMode === "sold" ? buyer?.id : undefined,
+        saleChannel: outcomeMode === "sold" ? saleChannel : undefined,
+        shareBuyerIdentity: outcomeMode === "sold" ? shareBuyerIdentity : undefined,
+        shareSalePrice: outcomeMode === "sold" ? shareSalePrice : undefined,
       });
       setOutcomeMode(null);
       setSalePrice("");
+      setBuyer(null);
+      setShareBuyerIdentity(false);
+      setShareSalePrice(false);
       setOutcomeNotes("");
       await reload();
       onComplete();
@@ -471,11 +487,43 @@ export function ConsignmentManager({
             <div className="consignment-outcome-form">
               <h4>Mark as {outcomeMode}</h4>
               <label><span>{outcomeMode === "sold" ? "Sale date" : "Return date"}</span><input type="date" value={outcomeDate} onChange={(event) => setOutcomeDate(event.target.value)} /></label>
-              {outcomeMode === "sold" && <label><span>Sale price</span><input type="number" min="0" step="0.01" value={salePrice} onChange={(event) => setSalePrice(event.target.value)} /></label>}
+              {outcomeMode === "sold" && (
+                <>
+                  <section className="consignment-sale-buyer">
+                    <span>Buyer</span>
+                    {buyer ? (
+                      <div className="consignment-selected-party">
+                        <span>{buyer.display_name} ({buyer.type})</span>
+                        <button type="button" className="secondary" onClick={() => setBuyer(null)}>Change</button>
+                      </div>
+                    ) : (
+                      <ProfileSearchAdd
+                        excludeIds={[active.consignor_id, active.consignee_id]}
+                        onAdd={setBuyer}
+                        placeholder="Search for the collector or buyer…"
+                      />
+                    )}
+                  </section>
+                  <label>
+                    <span>Sale channel</span>
+                    <select value={saleChannel} onChange={(event) => setSaleChannel(event.target.value as Exclude<SaleChannel, "private">)}>
+                      <option value="gallery">Gallery</option>
+                      <option value="exhibition">Exhibition</option>
+                      <option value="auction">Auction</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </label>
+                  <label><span>Sale price</span><input type="number" min="0" step="0.01" value={salePrice} onChange={(event) => setSalePrice(event.target.value)} /></label>
+                  <div className="sale-privacy-options">
+                    <label><input type="checkbox" checked={shareBuyerIdentity} onChange={(event) => setShareBuyerIdentity(event.target.checked)} /> Show buyer name publicly</label>
+                    <label><input type="checkbox" checked={shareSalePrice} onChange={(event) => setShareSalePrice(event.target.checked)} /> Show sale price publicly</label>
+                  </div>
+                </>
+              )}
               <label><span>Outcome notes</span><textarea value={outcomeNotes} onChange={(event) => setOutcomeNotes(event.target.value)} /></label>
-              {outcomeMode === "sold" && <p>Ownership remains unchanged until an ownership transfer is recorded.</p>}
+              {outcomeMode === "sold" && <p>Completing the sale transfers ownership to the buyer. Custody remains with the consignee until delivery is confirmed.</p>}
               <div>
-                <button type="button" disabled={savingOutcome} onClick={() => handleOutcome(active)}>{savingOutcome ? "Saving…" : `Confirm ${outcomeMode}`}</button>
+                <button type="button" disabled={savingOutcome || (outcomeMode === "sold" && !buyer)} onClick={() => handleOutcome(active)}>{savingOutcome ? "Saving…" : `Confirm ${outcomeMode}`}</button>
                 <button type="button" className="secondary" disabled={savingOutcome} onClick={() => setOutcomeMode(null)}>Cancel</button>
               </div>
             </div>

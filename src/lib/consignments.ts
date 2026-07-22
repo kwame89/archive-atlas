@@ -1,4 +1,5 @@
 import { changeCustody } from "./artworks";
+import { recordArtworkSale } from "./sales";
 import { supabase } from "./supabaseClient";
 import type {
   Artwork,
@@ -26,6 +27,10 @@ export interface ConsignmentOutcomeInput {
   outcomeDate: string;
   salePrice: number | null;
   outcomeNotes: string | null;
+  buyerId?: string;
+  saleChannel?: "exhibition" | "gallery" | "auction" | "other";
+  shareBuyerIdentity?: boolean;
+  shareSalePrice?: boolean;
 }
 
 export async function getArtworkConsignments(artworkId: string): Promise<Consignment[]> {
@@ -115,6 +120,24 @@ export async function completeConsignment(
   actorProfileId: string,
   input: ConsignmentOutcomeInput
 ): Promise<void> {
+  if (input.status === "sold") {
+    if (!input.buyerId) throw new Error("Select the buyer before completing the sale.");
+    await recordArtworkSale({
+      artworkId: artwork.id,
+      actorId: actorProfileId,
+      buyerId: input.buyerId,
+      saleDate: input.outcomeDate,
+      saleChannel: input.saleChannel ?? "gallery",
+      salePrice: input.salePrice,
+      currency: consignment.currency,
+      privateNotes: input.outcomeNotes,
+      consignmentId: consignment.id,
+      shareBuyerIdentity: input.shareBuyerIdentity ?? false,
+      shareSalePrice: input.shareSalePrice ?? false,
+    });
+    return;
+  }
+
   if (input.status === "returned" && artwork.current_custodian_id === consignment.consignee_id) {
     await changeCustody(artwork, actorProfileId, {
       toPartyId: consignment.consignor_id,
@@ -127,7 +150,7 @@ export async function completeConsignment(
     .update({
       status: input.status,
       outcome_date: input.outcomeDate,
-      sale_price: input.status === "sold" ? input.salePrice : null,
+      sale_price: null,
       outcome_notes: input.outcomeNotes,
       updated_at: new Date().toISOString(),
     })

@@ -1878,6 +1878,28 @@
   grid-column: 1 / -1;
 }
 
+.installation-image-label {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 5px 8px;
+  color: #fff;
+  background: rgba(31, 50, 42, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 3px;
+  font-size: 0.62rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.artwork-media-stage {
+  position: relative;
+}
+
+.sale-provenance-meta {
+  text-transform: capitalize;
+}
+
 /* Consignment workspace */
 .consignment-manager {
   min-width: 0;
@@ -2185,6 +2207,229 @@
   margin: 0;
   padding: 7px 10px;
   font-size: 0.74rem;
+}
+
+.consignment-sale-buyer {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #c4c0b6;
+}
+
+.consignment-sale-buyer > span {
+  display: block;
+  margin-bottom: 7px;
+  color: #6e6b63;
+  font-size: 0.64rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+/* Private sale and delivery workspace */
+.sale-manager {
+  min-width: 0;
+}
+
+.sale-manager-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 18px;
+}
+
+.sale-manager-heading h3 {
+  margin-bottom: 5px;
+}
+
+.sale-manager-heading p,
+.sale-privacy-reminder {
+  margin: 0;
+  color: #716e66;
+  font-size: 0.76rem;
+}
+
+.sale-manager-heading button,
+.confirm-delivery-button {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 0;
+  padding: 7px 10px;
+  font-size: 0.74rem;
+}
+
+.sale-form,
+.delivery-form {
+  margin: 18px 0;
+  padding: 20px;
+  background: #e7e4dc;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+}
+
+.sale-form h4 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.sale-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+  margin-top: 16px;
+}
+
+.sale-form label,
+.delivery-form label,
+.sale-notes-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sale-form label > span,
+.delivery-form label > span,
+.sale-notes-field > span {
+  color: #6e6b63;
+  font-size: 0.64rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.sale-form input,
+.sale-form select,
+.sale-form textarea,
+.delivery-form input,
+.delivery-form textarea {
+  margin: 0;
+}
+
+.sale-notes-field {
+  margin-top: 16px;
+}
+
+.sale-form textarea,
+.delivery-form textarea {
+  min-height: 76px;
+}
+
+.sale-privacy-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 18px;
+  margin-top: 16px;
+  padding: 13px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.sale-privacy-options label {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: #55524c;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.sale-privacy-options input {
+  width: auto;
+  margin-top: 2px;
+}
+
+.sale-custody-note {
+  margin: 14px 0 0;
+  color: #6e5740;
+  font-size: 0.72rem;
+}
+
+.sale-form-actions,
+.delivery-form > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.sale-form-actions button,
+.delivery-form button {
+  min-height: 36px;
+  margin: 0;
+  padding: 7px 10px;
+  font-size: 0.74rem;
+}
+
+.sale-history {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border-strong);
+}
+
+.sale-history > li {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sale-history-summary {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 6px 16px;
+  align-items: center;
+  color: #68655e;
+  font-size: 0.74rem;
+}
+
+.sale-history-summary strong {
+  color: var(--text-h);
+}
+
+.delivery-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #73541e;
+  font-size: 0.64rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.delivery-status.delivered {
+  color: var(--green-dark);
+}
+
+.confirm-delivery-button {
+  margin-top: 12px;
+}
+
+.delivery-form {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.5fr) minmax(0, 1.5fr);
+  gap: 16px;
+  margin-bottom: 0;
+}
+
+.delivery-form > div {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
+
+.sale-privacy-reminder {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.owner-media-panel > button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
 }
 
 .consignment-empty {
@@ -5405,6 +5650,44 @@ button.danger {
 
   .batch-artwork-file-icon {
     display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .sale-manager-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .sale-manager-heading button {
+    width: 100%;
+  }
+
+  .sale-form,
+  .delivery-form {
+    padding: 16px;
+  }
+
+  .sale-form-grid,
+  .sale-privacy-options,
+  .delivery-form {
+    grid-template-columns: 1fr;
+  }
+
+  .sale-history-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .delivery-form > div {
+    grid-column: 1;
+  }
+
+  .sale-form-actions button,
+  .delivery-form button,
+  .confirm-delivery-button,
+  .owner-media-panel > button {
+    width: 100%;
   }
 }
 
