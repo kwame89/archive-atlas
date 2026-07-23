@@ -1232,11 +1232,19 @@
    provenance exists yet), so it reads as a quiet toolbar action rather than
    a prominent danger button — muted until hover. */
 .record-delete-link {
+  /* The global `button` rule sets min-height: 42px and margin-top: 14px,
+     which made this sit taller and lower than the sibling toolbar links.
+     Reset the box entirely so it matches them. */
+  min-height: 0;
+  margin: 0;
   padding: 0;
   background: none;
   border: 0;
   color: #8a5050;
   font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: inherit;
   cursor: pointer;
 }
 
@@ -1255,10 +1263,13 @@
 
 .record-delete-yes,
 .record-delete-no {
+  min-height: 0;
+  margin: 0;
+  padding: 5px 10px;
   font-family: inherit;
   font-size: 0.78rem;
   font-weight: 700;
-  padding: 5px 10px;
+  line-height: inherit;
   border-radius: 4px;
   cursor: pointer;
 }
