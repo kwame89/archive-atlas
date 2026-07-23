@@ -37,6 +37,7 @@ import { artworkPath, profilePath, recordIdFromRoute } from "../lib/recordRoutes
 import { normalizeSpecialties, PROFILE_TYPE_LABELS } from "../lib/profilePresentation";
 import { AppHeader } from "../components/AppHeader";
 import type { Artwork, Profile } from "../types/database";
+import { SoldDot } from "../components/SoldDot";
 
 const TIER_LABELS: Record<Profile["trust_tier"], string> = {
   unclaimed: "Unclaimed",
@@ -627,7 +628,10 @@ export function ProfilePage() {
                 );
                 const caption = (
                   <>
-                    <span>{artwork.title}</span>
+                    <span className="artwork-tile-title">
+                      {artwork.title}
+                      <SoldDot soldAt={artwork.sold_at} />
+                    </span>
                     <span className="muted">
                       {[artwork.medium, artwork.year].filter(Boolean).join(" · ")}
                     </span>

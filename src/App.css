@@ -6554,3 +6554,36 @@ button.danger {
     min-height: 0;
   }
 }
+
+
+/* The gallery red dot. Public marker that a work has sold; the sale's price,
+   buyer and channel stay private (see 0031). */
+.sold-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 8px;
+  color: #a12d2d;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.sold-dot-mark {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c8302f;
+  /* Reads as a physical dot on the wall label rather than a status pill. */
+  box-shadow: 0 0 0 2px rgb(200 48 47 / 18%);
+}
+
+.artwork-tile-title {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+}

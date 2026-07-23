@@ -24,6 +24,7 @@ import { getErrorMessage } from "../lib/errors";
 import { artworkPath, artworkPathFromParts, profilePath } from "../lib/recordRoutes";
 import { AppHeader } from "../components/AppHeader";
 import type { Artwork, ArtworkEvent, Profile } from "../types/database";
+import { SoldDot } from "../components/SoldDot";
 
 type ArchiveFilter = "all" | "attention" | "complete";
 
@@ -385,7 +386,10 @@ export function HomePage({ profile }: { profile: Profile }) {
                             )}
                           </div>
                           <div className="dashboard-artwork-copy">
-                            <strong>{artwork.title}</strong>
+                            <strong>
+                              {artwork.title}
+                              <SoldDot soldAt={artwork.sold_at} />
+                            </strong>
                             <span>{[artwork.medium, date].filter(Boolean).join(" · ")}</span>
                             <small className={missing.length > 0 ? "needs-attention" : "complete"}>
                               {missing.length > 0 ? (

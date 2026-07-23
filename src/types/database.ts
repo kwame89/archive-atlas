@@ -74,6 +74,7 @@ export interface Artwork {
   edition_number: number | null;
   edition_total: number | null;
   classification: string | null;
+  sold_at: string | null;
   description: string | null;
   tags: string[] | null;
   subject_matter: string | null;

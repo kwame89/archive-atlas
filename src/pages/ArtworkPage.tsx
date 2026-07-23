@@ -53,6 +53,7 @@ import { ProfileSearchAdd } from "../components/ProfileSearchAdd";
 import { AppHeader } from "../components/AppHeader";
 import type { Artwork, ArtworkEvent, ArtworkImage, Profile } from "../types/database";
 import { formatEditionLabel } from "../lib/classification";
+import { SoldDot } from "../components/SoldDot";
 import {
   artworkPath,
   profilePathFromParts,
@@ -735,6 +736,7 @@ export function ArtworkPage() {
           <div className="artwork-record-summary">
             <p className="eyebrow">Artwork record</p>
             <h1>{artwork.title}</h1>
+            <SoldDot soldAt={artwork.sold_at} />
             <p className="record-byline">
               By{" "}
               <Link
