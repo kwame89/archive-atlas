@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ScrollToHash } from "./components/ScrollToHash";
 import { AuthProvider } from "./lib/AuthProvider";
 import { useAuth } from "./lib/authContext";
 import { getMyProfile } from "./lib/profiles";
@@ -70,6 +71,7 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <ScrollToHash />
         <Routes>
           <Route
             path="/artworks/:id/edit"
