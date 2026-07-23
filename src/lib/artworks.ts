@@ -848,3 +848,27 @@ export async function getProfileNames(ids: string[]): Promise<Record<string, str
   }
   return map;
 }
+
+/**
+ * Discards an artwork record that has no provenance events.
+ *
+ * Only reachable for records whose genesis event never landed (see 0029/0030)
+ * — the database refuses once any event exists, so this cannot destroy
+ * provenance even if called in error. Storage objects are cleared first,
+ * because the artwork_images rows cascade away and would otherwise leave
+ * unreferenced files in the bucket.
+ */
+export async function deleteDraftArtwork(artworkId: string): Promise<void> {
+  const images = await getArtworkImages(artworkId).catch(() => []);
+
+  const { error } = await supabase.rpc("delete_draft_artwork", {
+    p_artwork_id: artworkId,
+  });
+  if (error) throw error;
+
+  // After the row is gone: a failure here leaks a file, which is far better
+  // than deleting files for a record the database refused to remove.
+  await Promise.all(
+    images.map((image) => removeArtworkImageObject(image.url).catch(() => undefined))
+  );
+}

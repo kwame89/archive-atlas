@@ -33,6 +33,7 @@ import {
   updateGenesisDate,
   updateRoyaltyPercentage,
   uploadArtworkImages,
+  deleteDraftArtwork,
   uploadOwnerInstallationImages,
 } from "../lib/artworks";
 import { getErrorMessage } from "../lib/errors";
@@ -166,6 +167,23 @@ export function ArtworkPage() {
   const [signError, setSignError] = useState("");
   const [signErrorEventId, setSignErrorEventId] = useState<string | null>(null);
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deletingDraft, setDeletingDraft] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  async function handleDeleteDraft() {
+    if (!id) return;
+    setDeletingDraft(true);
+    setDeleteError("");
+    try {
+      await deleteDraftArtwork(id);
+      navigate("/", { replace: true });
+    } catch (err) {
+      setDeleteError(getErrorMessage(err));
+      setDeletingDraft(false);
+      setConfirmingDelete(false);
+    }
+  }
 
   async function reloadImages() {
     if (!id) return;
@@ -533,6 +551,44 @@ export function ArtworkPage() {
                   <ShieldCheck size={16} aria-hidden="true" />
                   Certificate of authenticity
                 </Link>
+                {/* Only for records whose genesis event never landed. Once any
+                    event exists the record is provenance and the database
+                    refuses to delete it (see 0030). */}
+                {events.length === 0 && (
+                  confirmingDelete ? (
+                    <span className="record-delete-confirm">
+                      <span>Discard this record?</span>
+                      <button
+                        type="button"
+                        className="record-delete-yes"
+                        onClick={handleDeleteDraft}
+                        disabled={deletingDraft}
+                      >
+                        {deletingDraft ? "Discarding…" : "Yes, discard"}
+                      </button>
+                      <button
+                        type="button"
+                        className="record-delete-no"
+                        onClick={() => setConfirmingDelete(false)}
+                        disabled={deletingDraft}
+                      >
+                        Cancel
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="record-delete-link"
+                      onClick={() => {
+                        setDeleteError("");
+                        setConfirmingDelete(true);
+                      }}
+                    >
+                      <Trash2 size={16} aria-hidden="true" />
+                      Discard record
+                    </button>
+                  )
+                )}
               </>
             )}
             <Link to={artworkPath(artwork, "print")} className="record-print-link">
@@ -541,6 +597,8 @@ export function ArtworkPage() {
             </Link>
           </div>
         </div>
+
+        {deleteError && <p className="record-delete-error">{deleteError}</p>}
 
         <section className="artwork-record-hero">
           <div className="artwork-media-column">

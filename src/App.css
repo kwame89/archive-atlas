@@ -1195,7 +1195,8 @@
 .record-back-link,
 .record-edit-link,
 .record-certificate-link,
-.record-print-link {
+.record-print-link,
+.record-delete-link {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -1225,6 +1226,65 @@
 
 .record-certificate-link {
   color: #76591f;
+}
+
+/* Discarding an incomplete record is destructive but low-stakes (no
+   provenance exists yet), so it reads as a quiet toolbar action rather than
+   a prominent danger button — muted until hover. */
+.record-delete-link {
+  padding: 0;
+  background: none;
+  border: 0;
+  color: #8a5050;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.record-delete-link:hover {
+  color: #a12d2d;
+}
+
+.record-delete-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #8a5050;
+}
+
+.record-delete-yes,
+.record-delete-no {
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.record-delete-yes {
+  background: #a12d2d;
+  border: 1px solid #a12d2d;
+  color: #fff;
+}
+
+.record-delete-yes:disabled,
+.record-delete-no:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.record-delete-no {
+  background: none;
+  border: 1px solid var(--border);
+  color: #5a5851;
+}
+
+.record-delete-error {
+  margin: 8px 2px 0;
+  color: #a12d2d;
+  font-size: 0.8rem;
 }
 
 .artwork-record-hero {
