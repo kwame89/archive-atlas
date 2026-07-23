@@ -50,7 +50,7 @@ $$;
 
 comment on function auth_artist_sees_profile(uuid) is
   'Artist-retains-visibility leg of profiles_select. SECURITY DEFINER so the '
-  'events lookup does not re-enter RLS — see 0026. Returns only a boolean, '
+  'events lookup does not re-enter RLS — see 0029. Returns only a boolean, '
   'and only about the caller (via auth_controls_profile), so it exposes '
   'nothing the policy did not already grant.';
 
