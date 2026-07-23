@@ -7,7 +7,14 @@ import {
   getArtworkSales,
   recordArtworkSale,
 } from "../lib/sales";
-import type { Artwork, ArtworkSale, Profile, SaleChannel } from "../types/database";
+import type {
+  Artwork,
+  ArtworkSale,
+  Profile,
+  ProfileType,
+  SaleChannel,
+} from "../types/database";
+import { getProfileRoles, PROFILE_TYPE_LABELS } from "../lib/profilePresentation";
 import { ProfileSearchAdd } from "./ProfileSearchAdd";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "JMD"];
@@ -46,6 +53,10 @@ interface SaleManagerProps {
   actorProfileId: string;
   controlsOwner: boolean;
   controlsCustodian: boolean;
+  /** The acting profile, used only to offer a capacity picker when it holds
+   * more than one role. The database validates the choice against the actual
+   * selling party, so this is a convenience, not the authority. */
+  actorProfile?: Profile | null;
   onComplete: () => void;
 }
 
@@ -54,8 +65,11 @@ export function SaleManager({
   actorProfileId,
   controlsOwner,
   controlsCustodian,
+  actorProfile,
   onComplete,
 }: SaleManagerProps) {
+  const actorRoles = actorProfile ? getProfileRoles(actorProfile) : [];
+  const canChooseRole = actorRoles.length > 1;
   const [sales, setSales] = useState<ArtworkSale[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -68,6 +82,7 @@ export function SaleManager({
   const [privateNotes, setPrivateNotes] = useState("");
   const [shareBuyerIdentity, setShareBuyerIdentity] = useState(false);
   const [shareSalePrice, setShareSalePrice] = useState(false);
+  const [sellerRole, setSellerRole] = useState<ProfileType | "">("");
   const [saving, setSaving] = useState(false);
   const [deliverySaleId, setDeliverySaleId] = useState<string | null>(null);
   const [deliveryDate, setDeliveryDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -117,6 +132,7 @@ export function SaleManager({
         privateNotes: privateNotes.trim() || null,
         shareBuyerIdentity,
         shareSalePrice,
+        sellerRole: sellerRole || null,
       });
       setShowForm(false);
       setBuyer(null);
@@ -204,6 +220,21 @@ export function SaleManager({
                 ))}
               </select>
             </label>
+            {canChooseRole && (
+              <label>
+                <span>Selling as</span>
+                <select
+                  value={sellerRole}
+                  onChange={(event) => setSellerRole(event.target.value as ProfileType | "")}
+                >
+                  <option value="">{PROFILE_TYPE_LABELS[actorRoles[0]]} (default)</option>
+                  {actorRoles.slice(1).map((role) => (
+                    <option key={role} value={role}>{PROFILE_TYPE_LABELS[role]}</option>
+                  ))}
+                </select>
+                <small>Recorded on the provenance record as the capacity you sold in.</small>
+              </label>
+            )}
             <label>
               <span>Sale price</span>
               <input type="number" min="0" step="0.01" value={salePrice} onChange={(event) => setSalePrice(event.target.value)} />

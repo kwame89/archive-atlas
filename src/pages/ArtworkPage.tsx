@@ -1167,6 +1167,7 @@ export function ArtworkPage() {
                     actorProfileId={myProfileId}
                     controlsOwner={controlsOwner}
                     controlsCustodian={controlsCustodian}
+                    actorProfile={myProfile}
                     onComplete={loadAll}
                   />
                 </section>

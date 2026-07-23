@@ -1,5 +1,6 @@
 import { anchorEvent } from "./artworks";
 import { supabase } from "./supabaseClient";
+import type { ProfileType } from "../types/database";
 import type { ArtworkSale, SaleChannel } from "../types/database";
 
 export interface RecordSaleInput {
@@ -14,6 +15,9 @@ export interface RecordSaleInput {
   consignmentId?: string | null;
   shareBuyerIdentity: boolean;
   shareSalePrice: boolean;
+  /** Capacity the seller acted in. Omit to use their primary profile type;
+   * only meaningful for profiles holding secondary roles (0032/0033). */
+  sellerRole?: ProfileType | null;
 }
 
 interface RecordSaleResult {
@@ -52,6 +56,7 @@ export async function recordArtworkSale(input: RecordSaleInput): Promise<RecordS
     p_consignment_id: input.consignmentId ?? null,
     p_share_buyer_identity: input.shareBuyerIdentity,
     p_share_sale_price: input.shareSalePrice,
+    p_seller_role: input.sellerRole ?? null,
   });
   if (error) throw error;
 
