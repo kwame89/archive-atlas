@@ -518,12 +518,6 @@ export function ProfilePage() {
                   <span>Private account administration</span>
                   <h2 id="stellar-wallet-heading">Stellar identity</h2>
                 </div>
-                <span className={`wallet-account-status${profile.linked_wallet ? " is-connected" : ""}`}>
-                  {profile.linked_wallet && <CheckCircle2 size={14} aria-hidden="true" />}
-                  {profile.linked_wallet
-                    ? `Connected to ${STELLAR_NETWORK === "mainnet" ? "Stellar mainnet" : "testnet"}`
-                    : "Not connected"}
-                </span>
               </header>
               {profile.linked_wallet ? (
                 <>
@@ -574,6 +568,12 @@ export function ProfilePage() {
                   {linkingWallet ? "Linking…" : "Link wallet"}
                 </button>
               )}
+              <span className={`wallet-account-status${profile.linked_wallet ? " is-connected" : ""}`}>
+                {profile.linked_wallet && <CheckCircle2 size={14} aria-hidden="true" />}
+                {profile.linked_wallet
+                  ? `Connected to ${STELLAR_NETWORK === "mainnet" ? "Stellar mainnet" : "testnet"}`
+                  : "Not connected"}
+              </span>
             </div>
           </section>
         )}

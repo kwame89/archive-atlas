@@ -2865,10 +2865,19 @@
   font-size: 0.67rem;
 }
 
+/* Buttons on one row, connection status on its own line beneath them. */
 .wallet-account-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 7px;
+}
+
+.wallet-account-actions .wallet-account-status {
+  flex-basis: 100%;
+  justify-content: flex-end;
+  padding-top: 4px;
 }
 
 .wallet-account-actions button {
@@ -3576,11 +3585,22 @@ select,
 textarea {
   width: 100%;
   padding: 10px 11px;
-  color: inherit;
+  /* Explicit ink, not `inherit`: these sit on a white field, so inheriting a
+     muted or on-dark parent colour made typed text (e.g. the sign-in email)
+     too faint to read. */
+  color: var(--ink);
   background: #ffffff;
   border: 1px solid var(--border-strong);
   border-radius: 4px;
   font-size: 0.92rem;
+}
+
+/* Native selects reserve room for the OS dropdown arrow inside the padding
+   box; with symmetric padding the longest option ("All public profiles")
+   was clipped before opening. */
+select {
+  padding-right: 32px;
+  text-overflow: ellipsis;
 }
 
 textarea {
