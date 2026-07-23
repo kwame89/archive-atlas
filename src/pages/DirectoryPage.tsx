@@ -4,7 +4,12 @@ import { Link } from "react-router-dom";
 import { AppHeader } from "../components/AppHeader";
 import { useAuth } from "../lib/authContext";
 import { getMyProfile, listPublicProfiles } from "../lib/profiles";
-import { PROFILE_TYPE_LABELS, PROFILE_TYPE_OPTIONS } from "../lib/profilePresentation";
+import {
+  formatProfileRoles,
+  profileHasRole,
+  PROFILE_TYPE_LABELS,
+  PROFILE_TYPE_OPTIONS,
+} from "../lib/profilePresentation";
 import { profilePath } from "../lib/recordRoutes";
 import { getErrorMessage } from "../lib/errors";
 import type { Profile, ProfileType } from "../types/database";
@@ -49,7 +54,8 @@ export function DirectoryPage() {
   const filteredProfiles = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return profiles.filter((profile) => {
-      if (typeFilter !== "all" && profile.type !== typeFilter) return false;
+      // A hybrid profile is findable under every role it holds.
+      if (typeFilter !== "all" && !profileHasRole(profile, typeFilter)) return false;
       return !normalizedQuery || profileSearchText(profile).includes(normalizedQuery);
     });
   }, [profiles, query, typeFilter]);
@@ -129,7 +135,7 @@ export function DirectoryPage() {
                       </span>
                     )}
                     <span className="directory-profile-type">
-                      {PROFILE_TYPE_LABELS[profile.type]}
+                      {formatProfileRoles(profile)}
                     </span>
                   </div>
                   <div className="directory-card-copy">

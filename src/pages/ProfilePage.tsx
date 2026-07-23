@@ -34,9 +34,14 @@ import {
 } from "../lib/stellarWallet";
 import { getErrorMessage } from "../lib/errors";
 import { artworkPath, profilePath, recordIdFromRoute } from "../lib/recordRoutes";
-import { normalizeSpecialties, PROFILE_TYPE_LABELS } from "../lib/profilePresentation";
+import {
+  formatProfileRoles,
+  normalizeSpecialties,
+  PROFILE_TYPE_LABELS,
+  PROFILE_TYPE_OPTIONS,
+} from "../lib/profilePresentation";
 import { AppHeader } from "../components/AppHeader";
-import type { Artwork, Profile } from "../types/database";
+import type { Artwork, Profile, ProfileType } from "../types/database";
 import { SoldDot } from "../components/SoldDot";
 
 const TIER_LABELS: Record<Profile["trust_tier"], string> = {
@@ -66,6 +71,7 @@ export function ProfilePage() {
   const [headlineDraft, setHeadlineDraft] = useState("");
   const [locationDraft, setLocationDraft] = useState("");
   const [specialtiesDraft, setSpecialtiesDraft] = useState("");
+  const [secondaryRolesDraft, setSecondaryRolesDraft] = useState<ProfileType[]>([]);
   const [publicEmailDraft, setPublicEmailDraft] = useState("");
   const [websiteDraft, setWebsiteDraft] = useState("");
   const [legalNameDraft, setLegalNameDraft] = useState("");
@@ -136,6 +142,7 @@ export function ProfilePage() {
     setHeadlineDraft(profile.headline ?? "");
     setLocationDraft(profile.location ?? "");
     setSpecialtiesDraft((profile.specialties ?? []).join(", "));
+    setSecondaryRolesDraft(profile.secondary_roles ?? []);
     setPublicEmailDraft(profile.public_email ?? "");
     setWebsiteDraft(profile.website_url ?? "");
     setLegalNameDraft(profile.legal_name ?? "");
@@ -156,6 +163,8 @@ export function ProfilePage() {
         headline: headlineDraft,
         location: locationDraft,
         specialties: normalizeSpecialties(specialtiesDraft),
+        secondaryRoles: secondaryRolesDraft,
+        primaryRole: profile.type,
         publicEmail: publicEmailDraft,
         websiteUrl: websiteDraft,
         legalName: legalNameDraft,
@@ -288,7 +297,7 @@ export function ProfilePage() {
           </div>
 
           <div className="public-profile-identity">
-            <p className="eyebrow">{PROFILE_TYPE_LABELS[profile.type]}</p>
+            <p className="eyebrow">{formatProfileRoles(profile)}</p>
             <h1>{profile.display_name}</h1>
             {profile.headline && <p className="public-profile-headline">{profile.headline}</p>}
 
@@ -429,6 +438,33 @@ export function ProfilePage() {
                   placeholder="https://example.com"
                 />
               </label>
+              <fieldset className="public-profile-edit-wide role-fieldset">
+                <legend>Also works as</legend>
+                <div className="role-options">
+                  {PROFILE_TYPE_OPTIONS.filter((option) => option.value !== profile.type).map(
+                    (option) => (
+                      <label key={option.value} className="role-option">
+                        <input
+                          type="checkbox"
+                          checked={secondaryRolesDraft.includes(option.value)}
+                          onChange={(event) =>
+                            setSecondaryRolesDraft((current) =>
+                              event.target.checked
+                                ? [...current, option.value]
+                                : current.filter((role) => role !== option.value)
+                            )
+                          }
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    )
+                  )}
+                </div>
+                <small>
+                  Your account type stays {PROFILE_TYPE_LABELS[profile.type]}. Anything added here
+                  appears on your profile and makes you findable under that role in the directory.
+                </small>
+              </fieldset>
               <label htmlFor="specialtiesEdit" className="public-profile-edit-wide">
                 Specialties
                 <input

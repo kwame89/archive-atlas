@@ -6587,3 +6587,43 @@ button.danger {
   flex-wrap: wrap;
   gap: 2px;
 }
+
+/* "Also works as" — secondary roles on the profile editor (0032). */
+.role-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.role-fieldset legend {
+  padding: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.role-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 8px 0 6px;
+}
+
+.role-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Checkboxes inherit the global input width: 100%, which would stretch each
+   one across its row. */
+.role-option input[type="checkbox"] {
+  width: auto;
+  min-width: 0;
+  margin: 0;
+}

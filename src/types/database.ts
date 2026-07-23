@@ -29,6 +29,7 @@ export type EventType =
 export interface Profile {
   id: string;
   type: ProfileType;
+  secondary_roles: ProfileType[] | null;
   trust_tier: TrustTier;
   display_name: string;
   legal_name: string | null;

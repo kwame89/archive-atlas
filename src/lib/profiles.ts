@@ -143,6 +143,10 @@ export interface UpdateProfileInput {
   location?: string | null;
   specialties?: string[];
   publicEmail?: string | null;
+  /** Roles beyond the primary `type`, e.g. an artist who also curates. */
+  secondaryRoles?: ProfileType[];
+  /** The profile's primary role, used to keep it out of secondaryRoles. */
+  primaryRole?: ProfileType;
   /** Whether this profile is publicly visible — see SCOPE.md's "Collector
    * privacy" design decision. Defaults to false for collectors at creation;
    * this lets them (or any profile type) change it later. */
@@ -158,6 +162,14 @@ export async function updateProfile(profileId: string, input: UpdateProfileInput
   if (input.headline !== undefined) updates.headline = input.headline || null;
   if (input.location !== undefined) updates.location = input.location || null;
   if (input.specialties !== undefined) updates.specialties = input.specialties;
+  // Deduped and stripped of the primary role, which the DB constraint also
+  // enforces — doing it here turns a would-be constraint violation into a
+  // no-op the user never sees.
+  if (input.secondaryRoles !== undefined) {
+    updates.secondary_roles = [...new Set(input.secondaryRoles)].filter(
+      (role) => role !== input.primaryRole
+    );
+  }
   if (input.publicEmail !== undefined) updates.public_email = input.publicEmail || null;
   if (input.isPublic !== undefined) updates.is_public = input.isPublic;
 
