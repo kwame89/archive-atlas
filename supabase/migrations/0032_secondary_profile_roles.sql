@@ -35,16 +35,26 @@ comment on column public.profiles.secondary_roles is
 alter table public.profiles
   drop constraint if exists profiles_secondary_roles_valid;
 
+-- The duplicate test needs unnest(), and a CHECK constraint cannot contain a
+-- subquery (0A000). An IMMUTABLE function can be called from one, so the
+-- logic moves here.
+create or replace function public.profile_roles_are_distinct(p_roles profile_type[])
+returns boolean
+language sql
+immutable
+as $$
+  select p_roles is null
+      or cardinality(p_roles) = (select count(distinct r) from unnest(p_roles) as r);
+$$;
+
+comment on function public.profile_roles_are_distinct(profile_type[]) is
+  'True when the array holds no repeated role. Exists because CHECK '
+  'constraints cannot contain subqueries — see 0032.';
+
 alter table public.profiles
   add constraint profiles_secondary_roles_valid check (
     not (type = any (secondary_roles))
-    and array_length(secondary_roles, 1) is distinct from 0
-    and (
-      secondary_roles = '{}'
-      or array_length(secondary_roles, 1) = (
-        select count(distinct r) from unnest(secondary_roles) as r
-      )
-    )
+    and public.profile_roles_are_distinct(secondary_roles)
   );
 
 -- The directory filters on roles, so it reads this on every profile listing.
